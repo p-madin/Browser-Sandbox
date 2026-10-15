@@ -45,8 +45,11 @@ body>div{
 .cell.selected, .cell.selected.path_step{
     fill:rgba(200,255,200,0.5)
 }
+.cell.selectedDestination{
+    fill:rgb(144 215 221)    
+}
 .cell.path_step{
-    fill:rgba(200,200,200,0.5)
+    fill:rgba(200,50,50,0.9)
 }
 .cell.agent.thinking{
     fill:rgba(200,200,0,1)
@@ -54,6 +57,9 @@ body>div{
 }
 .cell.agent.walking{
     fill:rgba(100,100,255,1)
+}
+.cell.enemy{
+    fill:rgb(190 0 0)
 }
 
 .path_options_disclosure{

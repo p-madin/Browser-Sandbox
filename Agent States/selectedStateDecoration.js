@@ -5,7 +5,7 @@ class SelectedDecoration extends cell_meta{
         this.cell = cell;
     }
     decorateCell(input){
-        input.push("selected");
+        input.push("selectedDestination");
         this.cell.decorateCell(input);
     }
 }

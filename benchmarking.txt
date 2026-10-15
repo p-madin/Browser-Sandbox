@@ -1,0 +1,21 @@
+gpt n = 50:
+55051 for 63 valid options
+61043 for 68 valid options
+66024 for 71 valid options
+79144 for 61 valid options
+91308 for 61 valid options
+
+69562 for 66 valid options
+273972 for 61 valid options
+410420 for 68 valid options
+508107 for 68 valid options
+541970 for 71 valid options
+
+non gpt n = 50:
+135334 for 34 valid options
+385016 for 39 valid options
+392317 for 46 valid options
+63482 for 44 valid options
+82545 for 41 valid options
+
+517690 for 45 valid options
