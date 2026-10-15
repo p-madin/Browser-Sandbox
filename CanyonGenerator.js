@@ -105,8 +105,8 @@ class CanyonGenerator {
      * @param {Array<cell_meta>} modifiedCells 
      */
     static stampSuspensionCrossing(map, center, modifiedCells) {
-        // Build 3x3 or 4x3 wooden rope bridge spanning the fissure
-        for (let ox = -1; ox <= 1; ox++) {
+        // Build 5x3 wooden rope bridge spanning from solid cliff to solid cliff
+        for (let ox = -2; ox <= 2; ox++) {
             for (let oy = -1; oy <= 1; oy++) {
                 const tx = center.x + ox;
                 const ty = center.y + oy;
@@ -115,14 +115,16 @@ class CanyonGenerator {
 
                 // Center line is passable wooden walkway
                 if (oy === 0) {
-                    cell.removeFlag(CellFlags.CHASM | CellFlags.BLOCKED | CellFlags.TREE);
+                    cell.removeFlag(CellFlags.CHASM | CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
                     cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
                     cell.elevation = 1;
                     modifiedCells.push(cell);
                 } else {
                     // Flanks are suspension rope guide rails
-                    cell.addFlag(CellFlags.STRUCTURE_WALL);
-                    modifiedCells.push(cell);
+                    if (cell.hasFlag(CellFlags.CHASM)) {
+                        cell.addFlag(CellFlags.STRUCTURE_WALL);
+                        modifiedCells.push(cell);
+                    }
                 }
             }
         }

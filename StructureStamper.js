@@ -26,7 +26,16 @@ class StructureStamper {
             return false;
         }
 
-        // 2. Collision check: must not overlap existing structural walls or floors
+        // 2. Collision check: must not overlap existing structural walls or floors, and obey terrain constraints
+        const tags = blueprint.tags || [];
+        const isBridge = tags.includes("bridge") || tags.includes("infrastructure") || blueprint.category === "infrastructure";
+        const isWaterfront = tags.includes("hydrology") || tags.includes("fishing") || blueprint.id === "watermill" || blueprint.id === "fishing_pier";
+
+        let waterCount = 0;
+        let chasmCount = 0;
+        let cliffCount = 0;
+        let doorCoord = null;
+
         for (let x = 0; x < blueprint.width; x++) {
             for (let y = 0; y < blueprint.height; y++) {
                 const mx = startX + x;
@@ -40,6 +49,51 @@ class StructureStamper {
                 // Check if already contains structural elements
                 if (cell.hasFlag(CellFlags.STRUCTURE_WALL) || cell.hasFlag(CellFlags.STRUCTURE_FLOOR)) {
                     return false;
+                }
+
+                if (cell.hasFlag(CellFlags.WATER)) waterCount++;
+                if (cell.hasFlag(CellFlags.CHASM)) chasmCount++;
+                if (cell.hasFlag(CellFlags.TERRAIN_CLIFF)) cliffCount++;
+
+                // Track doorway location if any
+                if (blueprint.layers.walls && blueprint.layers.walls[y] && blueprint.layers.walls[y][x] === "D") {
+                    doorCoord = { x: mx, y: my, localX: x, localY: y };
+                }
+            }
+        }
+
+        // Terrain rules:
+        // A. Dry terrestrial structures must have 0% water and 0% chasm
+        if (!isBridge && !isWaterfront) {
+            if (waterCount > 0 || chasmCount > 0) {
+                return false;
+            }
+            if (cliffCount > 0) {
+                return false; // Cannot build dry buildings on sheer cliff edges
+            }
+        }
+
+        // B. Waterfront structures require water contact, but cannot be built in chasms
+        if (isWaterfront) {
+            if (chasmCount > 0) return false;
+            if (waterCount === 0) return false; // Must touch water
+        }
+
+        // C. Doorway egress clearance: ensure doorway does not exit into deep water, chasm, or solid wall
+        if (doorCoord && !isBridge) {
+            let exitDx = 0, exitDy = 0;
+            if (doorCoord.localY === blueprint.height - 1) exitDy = 1;
+            else if (doorCoord.localY === 0) exitDy = -1;
+            else if (doorCoord.localX === 0) exitDx = -1;
+            else if (doorCoord.localX === blueprint.width - 1) exitDx = 1;
+
+            const exitCell = map.map_cells[doorCoord.x + exitDx] && map.map_cells[doorCoord.x + exitDx][doorCoord.y + exitDy];
+            if (exitCell) {
+                if (exitCell.hasFlag(CellFlags.CHASM) || exitCell.hasFlag(CellFlags.STRUCTURE_WALL)) {
+                    return false;
+                }
+                if (!isWaterfront && exitCell.hasFlag(CellFlags.WATER)) {
+                    return false; // Dry structure doorway cannot open into water
                 }
             }
         }
@@ -85,6 +139,32 @@ class StructureStamper {
         const instanceId = `${blueprint.id}_${originX}_${originY}`;
         const affectedCells = [];
 
+        // 1. Foundation Leveling: Determine uniform foundation elevation for the building footprint
+        const elevations = [];
+        for (let y = 0; y < blueprint.height; y++) {
+            for (let x = 0; x < blueprint.width; x++) {
+                const c = map.map_cells[startX + x] && map.map_cells[startX + x][startY + y];
+                if (c && c.elevation !== undefined && !c.hasFlag(CellFlags.WATER)) {
+                    elevations.push(c.elevation);
+                }
+            }
+        }
+        const foundationElev = elevations.length > 0 
+            ? elevations.sort((a, b) => a - b)[Math.floor(elevations.length / 2)] 
+            : 1;
+
+        // Level foundation grade and clear cliff seams across the footprint
+        for (let y = 0; y < blueprint.height; y++) {
+            for (let x = 0; x < blueprint.width; x++) {
+                const cell = map.map_cells[startX + x][startY + y];
+                cell.elevation = foundationElev;
+                cell.removeFlag(CellFlags.TERRAIN_CLIFF | CellFlags.TREE | CellFlags.BLOCKED);
+            }
+        }
+
+        let doorwayCoord = null;
+        let doorwayLocal = null;
+
         // Apply layers
         for (let y = 0; y < blueprint.height; y++) {
             for (let x = 0; x < blueprint.width; x++) {
@@ -92,8 +172,8 @@ class StructureStamper {
                 const my = startY + y;
                 const cell = map.map_cells[mx][my];
 
-                // Clear natural trees and natural blocked stone inside building footprint
-                cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
+                // Clear natural trees, rocks, and water
+                cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.WATER | CellFlags.WATER_SHALLOW);
 
                 // Apply floor layer
                 if (blueprint.layers.floor && blueprint.layers.floor[y] && blueprint.layers.floor[y][x]) {
@@ -106,6 +186,8 @@ class StructureStamper {
                     cell.addFlag(CellFlags.STRUCTURE_WALL);
                 } else if (wallToken === "D") {
                     cell.addFlag(CellFlags.STRUCTURE_DOOR);
+                    doorwayCoord = { x: mx, y: my };
+                    doorwayLocal = { x: x, y: y };
                 } else if (wallToken === "F") {
                     cell.addFlag(CellFlags.STRUCTURE_FIXTURE);
                 } else if (wallToken === "P") {
@@ -125,6 +207,25 @@ class StructureStamper {
 
                 // Update visual representation if rendered
                 cell.decorateCell([]);
+            }
+        }
+
+        // 2. Doorway Threshold Ramp: If the doorway steps out onto a differing elevation tier, attach a threshold ramp
+        if (doorwayCoord && doorwayLocal) {
+            let exitDx = 0, exitDy = 0;
+            if (doorwayLocal.y === blueprint.height - 1) exitDy = 1;
+            else if (doorwayLocal.y === 0) exitDy = -1;
+            else if (doorwayLocal.x === 0) exitDx = -1;
+            else if (doorwayLocal.x === blueprint.width - 1) exitDx = 1;
+
+            const exitCell = map.map_cells[doorwayCoord.x + exitDx] && map.map_cells[doorwayCoord.x + exitDx][doorwayCoord.y + exitDy];
+            if (exitCell && Math.abs((exitCell.elevation || 1) - foundationElev) >= 1) {
+                const doorCell = map.map_cells[doorwayCoord.x][doorwayCoord.y];
+                doorCell.addFlag(CellFlags.TERRAIN_RAMP);
+                exitCell.addFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH);
+                exitCell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
+                doorCell.decorateCell([]);
+                exitCell.decorateCell([]);
             }
         }
 

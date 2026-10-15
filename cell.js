@@ -143,6 +143,33 @@ class cell_meta {
     // --- Bitmask Flag API ---
     addFlag(flag) {
         if (typeof flag === 'string') flag = CellFlagAliases[flag] || 0;
+
+        // Structure floor/wall overrides contradictory terrain elements
+        if (flag & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL)) {
+            this.flags &= ~(CellFlags.WATER | CellFlags.WATER_SHALLOW | CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM);
+            if (this.elevation === 0) {
+                this.elevation = 1; // dry ground foundation grade
+            }
+        }
+
+        // Bridge deck clears cliff edges from crossing deck
+        if (flag & CellFlags.STRUCTURE_BRIDGE) {
+            this.flags &= ~CellFlags.TERRAIN_CLIFF;
+        }
+
+        // Structural paths clear trees and rocks
+        if (flag & CellFlags.STRUCTURE_PATH) {
+            this.flags &= ~(CellFlags.TREE | CellFlags.BLOCKED);
+        }
+
+        // Water cannot flood existing building structures
+        if (flag & CellFlags.WATER) {
+            if (this.flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL)) {
+                return this; // Structure foundation blocks water
+            }
+            this.flags &= ~(CellFlags.TREE | CellFlags.BLOCKED);
+        }
+
         this.flags |= flag;
         return this;
     }
@@ -175,9 +202,12 @@ class cell_meta {
     }
 
     isBlockedType() {
-        if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP)) return false;
+        // Closed doors, barricades, and structural walls are impassable barriers
+        if (this.flags & (CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_WALL)) return true;
+        // Paths, bridges, ramps, and interior floors are always passable
+        if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_FLOOR)) return false;
         if (this.flags & CellFlags.WATER_SHALLOW) return false;
-        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE | CellFlags.WATER | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM)) !== 0;
+        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.WATER | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM)) !== 0;
     }
 
     // --- Compatibility Methods ---
@@ -260,6 +290,9 @@ class cell_meta {
         if (this.flags & CellFlags.THINKING) classes.push("thinking");
         if (this.flags & CellFlags.WALKING) classes.push("walking");
         // Structural CSS classes
+        const hasStructure = (this.flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL)) !== 0;
+        const hasBridge = (this.flags & CellFlags.STRUCTURE_BRIDGE) !== 0;
+
         if (this.flags & CellFlags.STRUCTURE_FLOOR) classes.push("structure_floor");
         if (this.flags & CellFlags.STRUCTURE_PATH) classes.push("structure_path");
         if (this.flags & CellFlags.STRUCTURE_WALL) classes.push("structure_wall");
@@ -270,22 +303,23 @@ class cell_meta {
         }
         if (this.flags & CellFlags.STRUCTURE_FIXTURE) classes.push("structure_fixture");
         if (this.flags & CellFlags.STRUCTURE_BARRICADE) classes.push("structure_barricade");
-        if (this.flags & CellFlags.STRUCTURE_BRIDGE) classes.push("structure_bridge");
+        if (hasBridge) classes.push("structure_bridge");
         if (this.flags & CellFlags.TERRAIN_RAMP) classes.push("terrain_ramp");
-        if (this.flags & CellFlags.CHASM) classes.push("chasm");
-        if (this.flags & CellFlags.TERRAIN_FLORA) classes.push("flora");
-        if (this.elevation !== undefined && this.elevation !== 1) {
+        if (this.flags & CellFlags.CHASM && !hasBridge && !hasStructure) classes.push("chasm");
+        if (this.flags & CellFlags.TERRAIN_FLORA && !hasStructure) classes.push("flora");
+
+        if (this.elevation !== undefined && this.elevation !== 1 && !hasStructure) {
             classes.push(`elev_${this.elevation}`);
         }
-        // Hydrology & Terrain CSS classes
-        if (this.flags & CellFlags.WATER) {
+        // Hydrology & Terrain CSS classes: DO NOT output water or cliff if a structure or bridge occupies the tile!
+        if (this.flags & CellFlags.WATER && !hasStructure) {
             if (this.flags & CellFlags.WATER_SHALLOW) {
                 classes.push("water_shallow");
             } else {
                 classes.push("water");
             }
         }
-        if (this.flags & CellFlags.TERRAIN_CLIFF) classes.push("cliff");
+        if (this.flags & CellFlags.TERRAIN_CLIFF && !hasStructure && !hasBridge) classes.push("cliff");
 
         if (Array.isArray(input)) {
             for (var i = 0; i < input.length; i++) {

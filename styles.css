@@ -46,16 +46,26 @@ body > div.canvas_container {
 }
 
 .cell.selected,
-.cell.selected.path_step {
-    fill: rgba(200, 255, 200, 0.5);
+.cell.selected.path_step,
+#frame .cell.selected,
+#frame .cell.selected.path_step {
+    fill: rgba(74, 222, 128, 0.75) !important;
+    stroke: #16a34a !important;
+    stroke-width: 1px !important;
 }
 
-.cell.selectedDestination {
-    fill: rgb(144, 215, 221);
+.cell.selectedDestination,
+#frame .cell.selectedDestination {
+    fill: rgb(56, 189, 248) !important;
+    stroke: #0284c7 !important;
+    stroke-width: 1.5px !important;
 }
 
-.cell.path_step {
-    fill: rgba(200, 50, 50, 0.9);
+.cell.path_step,
+#frame .cell.path_step {
+    fill: rgba(239, 68, 68, 0.85) !important;
+    stroke: #dc2626 !important;
+    stroke-width: 1px !important;
 }
 
 .cell.enemy {
@@ -913,4 +923,28 @@ body > div.canvas_container {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Layer 4: Interactive Selection & Navigation Overlays (Top Cascade Priority) */
+#frame .cell.selectedDestination,
+.cell.selectedDestination {
+    fill: #38bdf8 !important;
+    stroke: #0284c7 !important;
+    stroke-width: 1.5px !important;
+}
+
+#frame .cell.path_step,
+.cell.path_step {
+    fill: rgba(239, 68, 68, 0.85) !important;
+    stroke: #b91c1c !important;
+    stroke-width: 1px !important;
+}
+
+#frame .cell.selected,
+#frame .cell.selected.path_step,
+.cell.selected,
+.cell.selected.path_step {
+    fill: rgba(74, 222, 128, 0.75) !important;
+    stroke: #16a34a !important;
+    stroke-width: 1px !important;
 }

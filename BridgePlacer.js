@@ -1,144 +1,187 @@
 /**
- * Bridge Placer & River Crossing Engine (Phase 2)
- * Detects trail-water intersections, stamps directional bridge infrastructure, and synchronizes navmesh connectivity.
+ * Bridge Placer & River Crossing Engine (Phase 4)
+ * Engineered shore-to-shore raycasting, continuous deck spanning, solid abutments, and flank railings.
  */
 
 class BridgePlacer {
     /**
-     * Scans the map for trails intersecting water bodies and reinforces them into engineered crossings.
+     * Scans the world map for trails intersecting water or chasms and builds full-span engineered crossings.
      * @param {mapObject} map 
-     * @returns {Array<Object>} detected crossings
+     * @returns {Array<Object>} list of completed bridges
      */
     static processRiverCrossings(map) {
-        console.log("[BridgePlacer] Detecting and engineering river crossings...");
-        const crossingCells = [];
+        console.log("[BridgePlacer] Engineering shore-to-shore bridge spans and abutments...");
+        const bridges = [];
+        const processedCoords = new Set();
+        const allModifiedCells = [];
 
-        // 1. Identify all trail cells currently spanning water bodies
-        for (let x = map.min_width; x < map.max_width; x++) {
-            for (let y = map.min_height; y < map.max_height; y++) {
+        // 1. Identify trail cells that touch water or chasms
+        for (let x = map.min_width + 1; x < map.max_width - 1; x++) {
+            for (let y = map.min_height + 1; y < map.max_height - 1; y++) {
                 const cell = map.map_cells[x] && map.map_cells[x][y];
                 if (!cell) continue;
 
-                if (cell.hasFlag(CellFlags.STRUCTURE_PATH) && cell.hasFlag(CellFlags.WATER)) {
-                    crossingCells.push(cell);
-                }
-            }
-        }
+                // Look for trail entering water or chasm
+                const isWaterCrossing = cell.hasFlag(CellFlags.STRUCTURE_PATH) && cell.hasFlag(CellFlags.WATER);
+                const isChasmCrossing = cell.hasFlag(CellFlags.STRUCTURE_PATH) && cell.hasFlag(CellFlags.CHASM);
 
-        if (crossingCells.length === 0) {
-            console.log("[BridgePlacer] No trail-water intersections detected.");
-            return [];
-        }
-
-        // 2. Cluster adjacent crossing cells into discrete crossing spans
-        const visited = new Set();
-        const clusters = [];
-
-        for (const cell of crossingCells) {
-            const key = `${cell.my_x},${cell.my_y}`;
-            if (visited.has(key)) continue;
-
-            const cluster = [];
-            const queue = [cell];
-            visited.add(key);
-
-            while (queue.length > 0) {
-                const curr = queue.shift();
-                cluster.push(curr);
-
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        if (dx === 0 && dy === 0) continue;
-                        const nx = curr.my_x + dx;
-                        const ny = curr.my_y + dy;
-                        const nKey = `${nx},${ny}`;
-                        if (visited.has(nKey)) continue;
-
-                        const neighbor = map.map_cells[nx] && map.map_cells[nx][ny];
-                        if (neighbor && neighbor.hasFlag(CellFlags.STRUCTURE_PATH) && neighbor.hasFlag(CellFlags.WATER)) {
-                            visited.add(nKey);
-                            queue.push(neighbor);
-                        }
+                if ((isWaterCrossing || isChasmCrossing) && !processedCoords.has(`${x},${y}`)) {
+                    const span = this.spanFullCrossing(map, cell, processedCoords);
+                    if (span) {
+                        bridges.push(span);
+                        allModifiedCells.push(...span.deckCells, ...span.railCells, ...span.abutmentCells);
                     }
                 }
             }
-
-            clusters.push(cluster);
         }
 
-        const crossings = [];
-        const allModifiedCells = [];
-
-        // 3. For each cluster, determine orientation and stamp bridge rails & decks
-        for (let idx = 0; idx < clusters.length; idx++) {
-            const cluster = clusters[idx];
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-
-            for (const c of cluster) {
-                if (c.my_x < minX) minX = c.my_x;
-                if (c.my_x > maxX) maxX = c.my_x;
-                if (c.my_y < minY) minY = c.my_y;
-                if (c.my_y > maxY) maxY = c.my_y;
-            }
-
-            const spanWidth = (maxX - minX) + 1;
-            const spanHeight = (maxY - minY) + 1;
-            const isHorizontal = spanWidth >= spanHeight;
-            const isStone = (idx % 2 === 1); // Alternate timber and stone architectural styles
-
-            // Stamp deck and side guide rails
-            for (const c of cluster) {
-                c.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
-                c.removeFlag(CellFlags.BLOCKED | CellFlags.TREE);
-                allModifiedCells.push(c);
-
-                // Add guide rails perpendicular to crossing direction
-                if (isHorizontal) {
-                    // Guide rails North & South
-                    const railN = map.map_cells[c.my_x] && map.map_cells[c.my_x][c.my_y - 1];
-                    const railS = map.map_cells[c.my_x] && map.map_cells[c.my_x][c.my_y + 1];
-                    if (railN && railN.hasFlag(CellFlags.WATER) && !railN.hasFlag(CellFlags.STRUCTURE_PATH)) {
-                        railN.addFlag(CellFlags.STRUCTURE_WALL);
-                        allModifiedCells.push(railN);
-                    }
-                    if (railS && railS.hasFlag(CellFlags.WATER) && !railS.hasFlag(CellFlags.STRUCTURE_PATH)) {
-                        railS.addFlag(CellFlags.STRUCTURE_WALL);
-                        allModifiedCells.push(railS);
-                    }
-                } else {
-                    // Guide rails West & East
-                    const railW = map.map_cells[c.my_x - 1] && map.map_cells[c.my_x - 1][c.my_y];
-                    const railE = map.map_cells[c.my_x + 1] && map.map_cells[c.my_x + 1][c.my_y];
-                    if (railW && railW.hasFlag(CellFlags.WATER) && !railW.hasFlag(CellFlags.STRUCTURE_PATH)) {
-                        railW.addFlag(CellFlags.STRUCTURE_WALL);
-                        allModifiedCells.push(railW);
-                    }
-                    if (railE && railE.hasFlag(CellFlags.WATER) && !railE.hasFlag(CellFlags.STRUCTURE_PATH)) {
-                        railE.addFlag(CellFlags.STRUCTURE_WALL);
-                        allModifiedCells.push(railE);
-                    }
-                }
-            }
-
-            crossings.push({
-                id: `crossing_${idx + 1}`,
-                type: isStone ? "stone_arch" : "timber_trestle",
-                orientation: isHorizontal ? "horizontal" : "vertical",
-                span: cluster.length,
-                bounds: { minX, maxX, minY, maxY }
-            });
-        }
-
-        // 4. Synchronize navmesh connectivity across the crossings and shorelines
+        // 2. Synchronize passability graph across all bridges and shorelines
         this.recalculateCrossingPassability(map, allModifiedCells);
 
-        console.log(`[BridgePlacer] Completed placement of ${crossings.length} bridges.`);
-        return crossings;
+        console.log(`[BridgePlacer] Engineered ${bridges.length} full-span bridges across waterways and chasms.`);
+        return bridges;
     }
 
     /**
-     * Stamps an individual bridge blueprint prefab at a specific world coordinate.
+     * Traces across an obstacle channel from Shore A to Shore B, building an unbroken bridge span.
+     * @param {mapObject} map 
+     * @param {cell_meta} seedCell 
+     * @param {Set<string>} processedCoords 
+     * @returns {Object|null} bridge metadata
+     */
+    static spanFullCrossing(map, seedCell, processedCoords) {
+        const sx = seedCell.my_x;
+        const sy = seedCell.my_y;
+
+        // Determine primary channel orientation:
+        // Check if water extends more horizontally or vertically around this seed
+        let waterH = 0, waterV = 0;
+        for (let d = -3; d <= 3; d++) {
+            const hCell = map.map_cells[sx + d] && map.map_cells[sx + d][sy];
+            if (hCell && (hCell.hasFlag(CellFlags.WATER) || hCell.hasFlag(CellFlags.CHASM))) waterH++;
+
+            const vCell = map.map_cells[sx] && map.map_cells[sx][sy + d];
+            if (vCell && (vCell.hasFlag(CellFlags.WATER) || vCell.hasFlag(CellFlags.CHASM))) waterV++;
+        }
+
+        // If water runs horizontally (river flowing East-West), the bridge crosses vertically (North-South)
+        // If water runs vertically (river flowing North-South), the bridge crosses horizontally (East-West)
+        const crossAxis = (waterH >= waterV) ? "V" : "H";
+
+        const deckCells = [];
+        const railCells = [];
+        const abutmentCells = [];
+
+        if (crossAxis === "H") {
+            // Horizontal bridge: Raycast West to find Shore A, Raycast East to find Shore B
+            let westX = sx;
+            while (westX > map.min_width + 1) {
+                const c = map.map_cells[westX][sy];
+                if (!c.hasFlag(CellFlags.WATER) && !c.hasFlag(CellFlags.CHASM)) break;
+                westX--;
+            }
+
+            let eastX = sx;
+            while (eastX < map.max_width - 2) {
+                const c = map.map_cells[eastX][sy];
+                if (!c.hasFlag(CellFlags.WATER) && !c.hasFlag(CellFlags.CHASM)) break;
+                eastX++;
+            }
+
+            // Shore A is westX, Shore B is eastX
+            const shoreA = map.map_cells[westX] && map.map_cells[westX][sy];
+            const shoreB = map.map_cells[eastX] && map.map_cells[eastX][sy];
+            if (!shoreA || !shoreB) return null;
+
+            // Anchor abutments on solid ground
+            shoreA.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreA.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF);
+            abutmentCells.push(shoreA);
+
+            shoreB.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreB.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF);
+            abutmentCells.push(shoreB);
+
+            // Lay continuous bridge deck from westX to eastX
+            for (let x = westX + 1; x <= eastX - 1; x++) {
+                const cell = map.map_cells[x] && map.map_cells[x][sy];
+                if (!cell) continue;
+
+                processedCoords.add(`${x},${sy}`);
+                cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
+                cell.removeFlag(CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
+                deckCells.push(cell);
+
+                // Flank guide rails North and South
+                for (const dy of [-1, 1]) {
+                    const rail = map.map_cells[x] && map.map_cells[x][sy + dy];
+                    if (rail && (rail.hasFlag(CellFlags.WATER) || rail.hasFlag(CellFlags.CHASM)) && !rail.hasFlag(CellFlags.STRUCTURE_PATH)) {
+                        rail.addFlag(CellFlags.STRUCTURE_WALL);
+                        railCells.push(rail);
+                    }
+                }
+            }
+        } else {
+            // Vertical bridge: Raycast North to find Shore A, Raycast South to find Shore B
+            let northY = sy;
+            while (northY > map.min_height + 1) {
+                const c = map.map_cells[sx][northY];
+                if (!c.hasFlag(CellFlags.WATER) && !c.hasFlag(CellFlags.CHASM)) break;
+                northY--;
+            }
+
+            let southY = sy;
+            while (southY < map.max_height - 2) {
+                const c = map.map_cells[sx][southY];
+                if (!c.hasFlag(CellFlags.WATER) && !c.hasFlag(CellFlags.CHASM)) break;
+                southY++;
+            }
+
+            const shoreA = map.map_cells[sx] && map.map_cells[sx][northY];
+            const shoreB = map.map_cells[sx] && map.map_cells[sx][southY];
+            if (!shoreA || !shoreB) return null;
+
+            // Anchor abutments on solid ground
+            shoreA.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreA.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF);
+            abutmentCells.push(shoreA);
+
+            shoreB.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreB.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF);
+            abutmentCells.push(shoreB);
+
+            // Lay continuous bridge deck from northY to southY
+            for (let y = northY + 1; y <= southY - 1; y++) {
+                const cell = map.map_cells[sx] && map.map_cells[sx][y];
+                if (!cell) continue;
+
+                processedCoords.add(`${sx},${y}`);
+                cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
+                cell.removeFlag(CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
+                deckCells.push(cell);
+
+                // Flank guide rails West and East
+                for (const dx of [-1, 1]) {
+                    const rail = map.map_cells[sx + dx] && map.map_cells[sx + dx][y];
+                    if (rail && (rail.hasFlag(CellFlags.WATER) || rail.hasFlag(CellFlags.CHASM)) && !rail.hasFlag(CellFlags.STRUCTURE_PATH)) {
+                        rail.addFlag(CellFlags.STRUCTURE_WALL);
+                        railCells.push(rail);
+                    }
+                }
+            }
+        }
+
+        return {
+            crossAxis,
+            deckCells,
+            railCells,
+            abutmentCells,
+            spanLength: deckCells.length
+        };
+    }
+
+    /**
+     * Stamps an individual bridge blueprint prefab at a specific coordinate.
      * @param {mapObject} map 
      * @param {{x: number, y: number}} coord 
      * @param {"H"|"V"} orientation 
@@ -158,12 +201,12 @@ class BridgePlacer {
 
         const instance = StructureStamper.stamp(map, bp, coord.x, coord.y);
         if (instance) {
-            // Guarantee all path cells on bridge are tagged with STRUCTURE_BRIDGE
             for (let y = instance.bounds.startY; y <= instance.bounds.endY; y++) {
                 for (let x = instance.bounds.startX; x <= instance.bounds.endX; x++) {
                     const cell = map.map_cells[x] && map.map_cells[x][y];
                     if (cell && cell.hasFlag(CellFlags.STRUCTURE_PATH)) {
                         cell.addFlag(CellFlags.STRUCTURE_BRIDGE);
+                        cell.removeFlag(CellFlags.TERRAIN_CLIFF);
                     }
                 }
             }
@@ -172,20 +215,18 @@ class BridgePlacer {
     }
 
     /**
-     * Re-evaluates local passability graph along all bridge and shoreline cells.
+     * Re-evaluates passability and CSS decoration along all bridge, rail, and shoreline cells.
      * @param {mapObject} map 
      * @param {Array<cell_meta>} cells 
      */
     static recalculateCrossingPassability(map, cells) {
-        const uniqueSet = new Set();
-        for (const c of cells) {
-            if (!c) continue;
-            uniqueSet.add(c);
-            c.decorateCell([]);
-            c.determineNeighboursPassable(map);
-            for (const n of c.my_neighbours) {
-                if (n && !uniqueSet.has(n)) {
-                    uniqueSet.add(n);
+        const unique = new Set(cells);
+        for (const cell of unique) {
+            if (!cell) continue;
+            cell.decorateCell([]);
+            cell.determineNeighboursPassable(map);
+            for (const n of cell.my_neighbours) {
+                if (n && !unique.has(n)) {
                     n.decorateCell([]);
                     n.determineNeighboursPassable(map);
                 }

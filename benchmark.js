@@ -14,6 +14,8 @@ class PathfinderBenchmark {
             { id: "short_sw", name: "Short: South-West Obstacle", category: "Short (5-15)", from: [0, 0], to: [-8, 6], wantBlocked: false },
             { id: "med_east", name: "Medium: Multi-Biome East", category: "Medium (15-35)", from: [0, 0], to: [18, 5], wantBlocked: false },
             { id: "med_west", name: "Medium: Tree Grove Routing", category: "Medium (15-35)", from: [0, 0], to: [-16, -14], wantBlocked: false },
+            { id: "terrain_bridge", name: "Terrain: River Crossing Span", category: "Collision (10-25)", from: [0, 0], to: [12, -8], wantBlocked: false },
+            { id: "topography_ramp", name: "Topography: Tier Ramp Climb", category: "Collision (10-25)", from: [0, 0], to: [-12, 10], wantBlocked: false },
             { id: "stress_deep", name: "Stress: Deep Wall-Skirting", category: "Stress (35-55+)", from: [0, 0], to: [24, 22], wantBlocked: false },
             { id: "unreachable", name: "Unreachable: Blocked Target", category: "Unreachable", from: [0, 0], to: [5, 5], wantBlocked: true }
         ];
