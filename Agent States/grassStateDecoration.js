@@ -1,11 +1,8 @@
-class GrassDecoration extends cell_meta{
-    cell;
-    constructor(cell){
+class GrassDecoration extends cell_meta {
+    constructor(cell) {
         super();
-        this.cell = cell;
-    }
-    decorateCell(input){
-        input.push("grass");
-        this.cell.decorateCell(input);
+        var target = cell ? ((typeof cell.getCellMeta === 'function') ? cell.getCellMeta() : cell) : this;
+        target.addFlag(CellFlags.GRASS);
+        if (cell) return target;
     }
 }

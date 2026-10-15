@@ -37,7 +37,7 @@ class agent_meta {
         console.log("Best options: " + my_pathfinder_object.best_options.length);
         console.log("---Operation end---");
 
-        this.agentCellOccupied = this.agentCellOccupied.removeDecoration("ThinkingAgentDecoration");
+        this.agentCellOccupied.removeFlag(CellFlags.THINKING);
         this.agentCellOccupied.decorateCell(new Array());
 
         if (!best_options || best_options.length === 0) {
@@ -47,7 +47,7 @@ class agent_meta {
 
         var targetCellMeta = this.destinationCell ? this.destinationCell.getCellMeta() : (typeof to !== 'undefined' && to ? to.getCellMeta() : null);
         if (targetCellMeta && globalMapObject.map_cells[targetCellMeta.my_x] && globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]) {
-            globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y] = new SelectedDecoration(globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]);
+            globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y].addFlag(CellFlags.SELECTED);
         }
         globalGridObject.updateGrid(this, true);
 
@@ -116,7 +116,7 @@ class agent_meta {
                     self.activeAnimation = null;
                     var targetCellMeta = self.destinationCell ? self.destinationCell.getCellMeta() : (typeof to !== 'undefined' && to ? to.getCellMeta() : null);
                     if (targetCellMeta && globalMapObject.map_cells[targetCellMeta.my_x] && globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]) {
-                        globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y] = globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y].removeDecoration("SelectedDecoration");
+                        globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y].removeFlag(CellFlags.SELECTED);
                     }
                     self.destinationCell = null;
                     globalGridObject.updateGrid(self, true);

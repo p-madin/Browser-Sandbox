@@ -1,6 +1,10 @@
-# Project Roadmap: Grid Engine
+# Project Roadmap: World Structures & Generation
 
-This document outlines the strategic engineering roadmap for Grid Engine, detailing current architectural bottlenecks, prioritized development phases, technical specifications, and recommended future expansions.
+This document outlines the strategic engineering roadmap for Grid Engine's multi-tile structures, dynamic procedural generation, interactive architecture, and layered interior rendering.
+
+> [!NOTE]
+> The foundational engine milestones (Phases 1–7: Viewport Retention, Motion Lerping, Vector Heading, Benchmarking, Modular A*, and Bitmask State Model) are archived in [Documentation/roadmap1.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/Documentation/roadmap1.md).  
+> Deferred experimental features (Autonomous NPC AI, Fog of War FOV, Web Audio SFX) are tracked in [sandbox.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/sandbox.md).
 
 ---
 
@@ -8,175 +12,166 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
 
 | Phase | Milestone | Priority | Status | Target Release |
 | :--- | :--- | :---: | :---: | :---: |
-| **Phase 1** | High-Performance Viewport & DOM Retention | `P0 - Critical` | ✅ Completed | v3.1 |
-| **Phase 2** | Smooth Per-Step Movement & Interpolated `walkPath()` | `P0 - Critical` | ✅ Completed | v3.1 |
-| **Phase 3** | Player SVG Asset & Directional Rotation | `P1 - High` | ✅ Completed | v3.2 |
-| **Phase 4** | Automated Pathfinder Benchmarking Harness | `P1 - High` | ✅ Completed | v3.2 |
-| **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | ✅ Completed | v3.3 |
-| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | ✅ Completed | v3.3 |
-| **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | 🟡 Next | v3.4 |
-| **Phase 8** | Decorator Modernization: Component / Bitmask State Model | `P2 - Medium` | ⏳ Pending | v3.4 |
-| **Phase 9** | Dynamic Fog of War & Line-of-Sight Visibility | `P3 - Low` | ⏳ Pending | v3.5 |
-| **Phase 10** | Web Audio SFX & Interactive Particle FX | `P3 - Low` | ⏳ Pending | v3.5 |
+| **Phase 1** | Structure Blueprint Engine & Prefab Stamp System | `P1 - High` | 🟡 Next | v3.5 |
+| **Phase 2** | Dynamic & Procedural Structure Generation Engine | `P1 - High` | ⏳ Pending | v3.5 |
+| **Phase 3** | Interactive Structural Mechanics & Dynamic Pathfinding Integration | `P2 - Medium` | ⏳ Pending | v3.6 |
+| **Phase 4** | Multi-Layer Interior Occlusion & Dynamic Roof Cutaway | `P2 - Medium` | ⏳ Pending | v3.6 |
 
 ---
 
-## Required Phases
+## Technical Specifications & Phase Breakdown
 
-### Phase 1: High-Performance Viewport Rendering & DOM Retention
-* **Current Bottleneck**:
-  Every step in [agent.js:walkPath](file:///c:/Workspace/HTML%20Workspace/GridV3/agent.js#L45-L68) calls `empty_frame(frame_root)` (`innerHTML = ''`), destroying and recreating 2,000â€“4,000 SVG `<rect>` elements every 50ms. This causes continuous layout recalculations, style recalculations, and garbage collection pressure.
+### Phase 1: Structure Blueprint Engine & Prefab Stamp System
+* **Motivation**:
+  Currently, map generation in [mapObject.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/mapObject.js) only places single isolated tiles (`BLOCKED`, `GRASS`, `TREE`, `ENEMY`). Cohesive structures—such as wooden cabins, stone fortresses, ancient ruins, bridges, shrines, and boundary fences—require a dedicated multi-tile Blueprint schema, coordinate transformation engine, and stamping pipeline.
 * **Architecture Solution**:
-  1. **Persistent Tile Pool (Virtual Grid Window)**:
-     - Instantiate SVG elements **once** during initialization based on viewport dimensions plus a 2-tile margin buffer.
-     - Never destroy DOM nodes during camera movement.
-     - As the camera shifts, recalculate cell offsets using modulo indexing and update only the required SVG attributes/CSS classes (`cell_object.decorateCell()`), eliminating DOM element creation and teardown.
-  2. **Alternative Canvas 2D Renderer Option**:
-     - Provide an interchangeable HTML5 `<canvas>` rendering pipeline where the tilemap is blitted via `ctx.fillRect()` / `ctx.drawImage()`, delivering 60 FPS performance with zero DOM overhead.
-  3. **Decouple View from Model**:
-     - Remove `cell_element` direct binding from `cell_meta`. Master map tiles should remain pure data; the renderer maintains the visual binding.
-
----
-
-### Phase 2: Smooth Per-Step Transitions (`walkPath()` Interpolation)
-* **Current Bottleneck**:
-  The agent teleports discretely from tile to tile in 50ms jumps, and the entire camera instantly snaps by integer tile coordinates.
-* **Architecture Solution**:
-  1. **Decouple Logic from Render Coordinates**:
-     - Keep discrete integer coordinates `(agent.x, agent.y)` for collision and path calculations.
-     - Introduce floating-point visual coordinates `(renderX, renderY)` for rendering.
-  2. **`requestAnimationFrame` Motion Loop**:
-     - Replace `setTimeout` with a high-precision `requestAnimationFrame` game loop.
-     - Given a `stepOption(fromCell, toCell)`:
-       $$\text{renderX}(t) = \text{lerp}(\text{from.x}, \text{to.x}, t)$$
-       $$\text{renderY}(t) = \text{lerp}(\text{from.y}, \text{to.y}, t)$$
-       where $t \in [0, 1]$ represents normalized step progress governed by a configurable travel speed.
-  3. **Hardware-Accelerated Translation**:
-     - Apply smooth translations directly to the player container using GPU-accelerated CSS transforms (`transform: translate3d(x, y, 0)`).
-  4. **Smooth Damped Camera**:
-     - Implement a smooth follow camera (critically damped spring or lerp) that glides softly toward the player rather than rigid 1-tile camera snaps.
-
----
-
-### Phase 3: Player SVG Asset & Directional Heading Rotation
-* **Current Bottleneck**:
-  The player is represented as a static colored square (`.cell.agent.walking`) without visual orientation, facing direction, or character identity.
-* **Architecture Solution**:
-  1. **Vector Asset Design (`player.svg`)**:
-     - Create a dedicated SVG sprite asset:
-       - Distinct directional pointer / arrow visor indicating facing direction.
-       - Base character body with subtle drop-shadow for depth.
-       - Embedded state indicators (glow/color transitions for idle, walking, thinking, interacting).
-  2. **Dynamic Heading Angle Calculation**:
-     - When advancing through a `stepOption`, compute the trajectory angle $\theta$:
-       $$\Delta x = \text{to.my\_x} - \text{from.my\_x}$$
-       $$\Delta y = \text{to.my\_y} - \text{from.my\_y}$$
-       $$\theta = \text{atan2}(\Delta y, \Delta x) \times \left(\frac{180}{\pi}\right)$$
-       *(e.g., East: 0Â°, South-East: 45Â°, South: 90Â°, South-West: 135Â°, West: 180Â°, North-West: -135Â°, North: -90Â°, North-East: -45Â°)*.
-  3. **Smooth Rotation Tween**:
-     - Apply `transform: rotate(Î¸deg)` with CSS transition easing (`transition: transform 120ms ease-out`), ensuring the character turns smoothly to face the path direction before and while walking.
-
----
-
-### Phase 4: Automated & Streamlined Pathfinder Benchmarking
-* **Current Bottleneck**:
-  Benchmarking currently requires uncommenting temporary code in `pathfinder.js`, generating raw console outputs, and manually pasting logs into `benchmarking.txt`.
-* **Architecture Solution**:
-  1. **Dedicated Benchmark Module (`benchmark.js`)**:
-     - Create a standalone test runner decoupled from game rendering.
-  2. **Standardized Test Battery**:
-     - **Micro (1â€“5 steps)**: Direct cardinal and diagonal maneuvers.
-     - **Short (5â€“15 steps)**: Local obstacles and clearing navigation.
-     - **Medium (15â€“35 steps)**: Multi-biome traversal with tree grove routing.
-     - **Stress / Maze (35â€“55+ steps)**: Deep dead-end cul-de-sacs and wall-skirting.
-     - **Unreachable Targets**: Pathing into isolated blocked clusters.
-  3. **Automated Telemetry Capture**:
-     - Execution time (sub-millisecond precision via `performance.now()`).
-     - State complexity (iterations / recursive nodes visited).
-     - Memory allocation and garbage collection delta.
-     - Optimality ratio: computed path length versus Euclidean / Manhattan lower bound.
-  4. **UI Dashboard & Data Export**:
-     - Add a floating modal / overlay in `test_grid.html` with a **"Run Benchmark Suite"** button.
-     - Output interactive histograms, average latencies, and a one-click **"Export Benchmark Report"** (Markdown/JSON).
-
----
-
-### Phase 5: Pathfinder Engine Modularization (Production vs. Research Suite)
-* **Current Bottleneck**:
-  [pathfinder.js](file:///c:/Workspace/HTML%20Workspace/GridV3/pathfinder.js) contains commented benchmark loops, conflicting recursion algorithms (`findUniquePathRecurse` vs `findUniquePathRecurseGPT`), and hardcoded UI manipulation mixed into graph traversal logic.
-* **Architecture Solution**:
-  1. **Modular Architecture & Strategy Pattern**:
-     - Define a clean, uniform pathfinding contract:
+  1. **Structure Bitmask Extensions (`CellFlags`)**:
+     Extend `CellFlags` in [cell.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/cell.js) with structural components:
+     ```javascript
+     const CellFlags = Object.freeze({
+         // Base terrain & entities (0 - 8)
+         NONE: 0,
+         BLOCKED: 1 << 0,
+         GRASS: 1 << 1,
+         TREE: 1 << 2,
+         ENEMY: 1 << 3,
+         AGENT: 1 << 4,
+         SELECTED: 1 << 5,
+         SPECIAL: 1 << 6,
+         THINKING: 1 << 7,
+         WALKING: 1 << 8,
+         // Structural Components (9 - 14)
+         STRUCTURE_WALL: 1 << 9,     // 512  - Impassable structural barrier
+         STRUCTURE_FLOOR: 1 << 10,   // 1024 - Wood plank / stone tile interior floor
+         STRUCTURE_DOOR: 1 << 11,    // 2048 - Ingress/egress doorway opening
+         STRUCTURE_ROOF: 1 << 12,    // 4096 - Overhead canopy / roof tile
+         STRUCTURE_FIXTURE: 1 << 13, // 8192 - Internal fixture (chest, bench, hearth)
+         STRUCTURE_PATH: 1 << 14     // 16384 - Exterior gravel / stone pathway
+     });
+     ```
+  2. **Structure Blueprint Schema (`StructureBlueprint.js`)**:
+     - Define prefabs using compact 2D matrix representations with local coordinate offsets:
        ```javascript
-       interface IPathfinderStrategy {
-           findPath(startCell, targetCell, mapObject): PathResult;
-       }
+       const CabinBlueprint = {
+           id: "cabin_small",
+           name: "Woodland Cabin",
+           width: 5,
+           height: 5,
+           origin: { x: 2, y: 2 },
+           layers: {
+               floor: [
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1],
+                   [1, 1, 1, 1, 1]
+               ],
+               walls: [
+                   ["W", "W", "W", "W", "W"],
+                   ["W",  0 ,  0 ,  0 , "W"],
+                   ["W",  0 , "F",  0 , "W"],
+                   ["W",  0 ,  0 ,  0 , "W"],
+                   ["W", "W", "D", "W", "W"] // D = Doorway
+               ]
+           }
+       };
        ```
-  2. **Separation of Concerns**:
-     - `PathfinderService.js`: Lightweight, hyper-optimized production navigation engine.
-     - `PathfinderResearchLab.js`: Diagnostic harness with step-by-step debug visualization, branch exploration tracking, and telemetry recording.
-     - `PathOptionsRenderer.js`: Dedicated UI controller managing the disclosure panel and path hover highlighting, decoupled from the search algorithm.
-  3. **Purge Technical Debt**:
-     - Remove dead / commented-out code blocks from production bundles.
-     - Eliminate global variable dependencies (`to`, `from`, `globalGridObject`).
+  3. **Blueprint Transformation Engine**:
+     - Support matrix rotation ($0^\circ, 90^\circ, 180^\circ, 270^\circ$) and horizontal/vertical mirroring so prefabs can face any cardinal direction naturally.
+  4. **Structure Stamper Service (`StructureStamper.js`)**:
+     - `canPlace(mapObject, blueprint, originX, originY)`: Validates bounding box within map bounds, verifies terrain passability clearance, and prevents clipping into existing structural bounds.
+     - `stamp(mapObject, blueprint, originX, originY)`: Atomically applies the blueprint onto `mapObject.map_cells`, applies `CellFlags`, clears overlapping natural obstacles (trees/rocks), and re-evaluates neighbor passability for affected cells and their perimeter in $O(W \times H)$.
+  5. **Visual Styling Tokens**:
+     - Update [styles.css](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/styles.css) with rich SVG classes for wooden walls, stone brick masonry, interior plank floors, doorways, and gravel trails.
 
 ---
 
-## Suggested Additional Phases
-
-### Phase 6: A* (A-Star) Algorithm & True Shortest-Path Guarantee
+### Phase 2: Dynamic & Procedural Structure Generation Engine
 * **Motivation**:
-  Recursive DFS has a worst-case $O(b^d)$ time complexity, requiring an arbitrary hard limit of 55 steps (`depth >= 55`). This causes navigation to fail completely for distant targets and risks UI freezes when exploring complex obstacle clusters.
-* **Implementation Plan**:
-  - Implement A* using an admissible octile distance heuristic:
-    $$h(\Delta x, \Delta y) = (\sqrt{2} - 1) \min(|\Delta x|, |\Delta y|) + \max(|\Delta x|, |\Delta y|)$$
-  - Utilize a binary min-heap for the open set priority queue.
-  - Multi-Parent Shortest-Path DAG: Discovers and presents all alternative routes sharing the exact same minimum step count in the options disclosure panel.
-  - Guarantees $O(E \log V)$ optimal routing in < 2ms without depth cutoffs.
+  Pre-baked static placements limit replayability and map scale. A robust open world requires dynamic procedural generation capable of generating varied ruins, multi-room dungeons, and clustered settlements that organically blend into surrounding biomes.
+* **Architecture Solution**:
+  1. **Binary Space Partitioning (BSP) Multi-Room Dungeon Generator**:
+     - Implement recursive BSP room-partitioning in `BSPStructureGenerator.js`:
+       - Recursively subdivide a structural bounding box into sub-sectors.
+       - Carve rooms within each partition with randomized margins.
+       - Connect rooms via $L$-shaped hallway corridors with guaranteed connectivity.
+       - Add perimeter walls and doorways at hallway intersections.
+  2. **Biome-Aware Placement Engine (`WorldStructurePlacer.js`)**:
+     - Define structural distribution rules matching biomes and elevations:
+       - **Lush Grass Biomes**: Woodcutter cabins, fenced pastures, windmills, stone well shrines.
+       - **Dense Forest Clusters**: Bandit hideouts, overgrown ancient stone ruins, timber lodges.
+       - **Stone / Rocky Outcrops**: Mountain watchtowers, fortified stone outposts, dungeon entrances.
+  3. **Poisson Disk Distribution with Clearance Buffers**:
+     - Enforce a minimum Euclidean clearance distance $d_{\text{min}}$ between major structures to avoid unnatural crowding while ensuring walkable surrounding paths.
+  4. **Terrain Leveling & Perimeter Blending**:
+     - Perform a pre-placement pass: flatten terrain obstacles within the footprint buffer $+1$ tile.
+     - Connect structural doorways to the surrounding biome via procedural dirt/gravel trail generation (A* path carving with natural wandering cost bias).
 
-### Phase 7: Real-Time Game Loop & Autonomous NPC AI (`tick()`)
+---
+
+### Phase 3: Interactive Structural Mechanics & Dynamic Pathfinding Integration
 * **Motivation**:
-  `EnemyDecoration` instances are spawned into `all_agents`, but remain static. An active world requires living entities that react to the player.
-* **Implementation Plan**:
-  - Implement a central ticker loop (`requestAnimationFrame` / 100ms tick interval).
-  - Add Finite State Machine (FSM) AI for enemies:
-    - **Patrol**: Wander within home grass biome.
-    - **Alert / Investigate**: Turn toward player if sound/movement detected within radius.
-    - **Chase**: Execute pathfinding toward player coordinates.
-    - **Attack / Interact**: Trigger encounter if within distance $\le 1.4$.
+  Structures should not be static geometry. Doors must be openable and lockable, barricades destructible, and navigation must adapt dynamically in real-time as doorways open or close without requiring a full map rebuild.
+* **Architecture Solution**:
+  1. **Interactive Doorways & State Machines**:
+     - `CellFlags.DOOR_CLOSED` vs. `CellFlags.DOOR_OPEN`:
+       - Closed doors act as collision blockers (`isBlockedType() === true`).
+       - Clicking a closed door within interaction reach (distance $\le 1.4$) toggles it open, immediately removing collision, updating CSS styling, and reconnecting adjacent graph edges.
+  2. **Dynamic A* Graph Invalidation & Route Re-evaluation**:
+     - When a door state transitions, invoke local passability updates:
+       `doorCell.determineNeighboursPassable(globalMapObject)` and notify immediate neighbors.
+     - Enable A* pathfinder to optionally consider closed doors as traverse-with-interaction steps: player can click beyond a closed door, the pathfinder routes through it, and the agent auto-opens doors upon arrival.
+  3. **Destructible Barricades & Woodcutting Integration**:
+     - Wooden barricades and cracked stone walls support degradation counters (e.g., 3 chops with axe).
+     - Integrated with the player's interaction distance checks from Phase 7.
+  4. **Interior Fixtures (Containers / Chests / Beds)**:
+     - Interactive anchor points with custom hover and click inspection dialogs.
 
-### Phase 8: Decorator Modernization: Component / Bitmask Model
+---
+
+### Phase 4: Multi-Layer Interior Occlusion & Dynamic Roof Cutaway
 * **Motivation**:
-  [cell.js](file:///c:/Workspace/HTML%20Workspace/GridV3/cell.js#L141) currently relies on `new(eval(this.constructor.name))` to remove decorators, which breaks under bundlers, is slow, and inverts decoration chains.
-* **Implementation Plan**:
-  - Transition to an Entity-Component or Bitmask Flag model:
-    ```javascript
-    const CellFlags = {
-        NONE: 0,
-        BLOCKED: 1 << 0,
-        GRASS: 1 << 1,
-        TREE: 1 << 2,
-        ENEMY: 1 << 3,
-        AGENT: 1 << 4
-    };
-    ```
-  - State changes become fast bitwise operations (`cell.flags |= CellFlags.TREE`), eliminating object wrapper allocations entirely while retaining clean styling hooks.
+  When structures possess roofs or upper canopies, the player cannot see interior layouts from the outside. However, upon walking inside, the roof must seamlessly fade away so the interior floor plan and objects are clear.
+* **Architecture Solution**:
+  1. **Dual-Layer Virtual SVG Renderer**:
+     - Extend [grid.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/grid.js) virtual pool to manage a secondary `<g id="roof_layer">` positioned above the entity layer.
+  2. **Structure Bounding Volume Hierarchy (BVH)**:
+     - Register every spawned structure in a spatial index with its rectangular or polygonal bounds:
+       `StructureRegistry.getStructureAt(x, y)`.
+  3. **Proximity & Interior Detection**:
+     - Whenever the player's visual or grid coordinate enters a structure's bounds or interior tile (`CellFlags.STRUCTURE_FLOOR` or `CellFlags.STRUCTURE_ROOF`):
+       - Trigger a smooth opacity fade on that specific building's roof group (`opacity: 1.0` $\to$ `0.1` or `0.0`).
+       - As the player leaves the perimeter, smoothly restore the roof group opacity (`0.0` $\to$ `1.0`).
+  4. **Interior Ambient Lighting / Vignette**:
+     - Apply an interior atmospheric filter or subtle vignette when inside buildings to create visual contrast between indoor sanctuaries and the outdoor wilderness.
 
-### Phase 9: Dynamic Fog of War & Line of Sight (Raycasting FOV)
-* **Motivation**:
-  The entire map is currently 100% visible, reducing exploration excitement and tactical value.
-* **Implementation Plan**:
-  - Add shadowcasting or Bresenham raycasting field of view (FOV).
-  - Three visibility tiers: Unexplored (black), Previously Explored (dim / static), Currently Visible (bright / dynamic).
+---
 
-### Phase 10: Web Audio SFX & Interactive Particle Effects
-* **Motivation**:
-  Visual actions (woodcutting, walking, enemy encounters) lack sensory feedback.
-* **Implementation Plan**:
-  - Zero-dependency procedural sound generator using Web Audio API:
-    - Rhythmic footsteps with tonal variation (grass vs. stone).
-    - Wooden crunch / thud sound on tree chopping.
-    - Subtle tone chime upon destination arrival.
-  - SVG/Canvas particle burst (wood splinters, grass blades) when interacting with environment tiles.
+## Technical Specifications & Class Contracts
 
-
+```
++-------------------------------------------------------------+
+|                  StructureBlueprint.js                      |
+|  - id: string, name: string                                 |
+|  - width: number, height: number, origin: {x, y}            |
+|  - layers: { floor, walls, fixtures, roof }                 |
+|  - rotate(degrees), flipHorizontal(), flipVertical()        |
++-------------------------------------------------------------+
+                              |
+                              v
++-------------------------------------------------------------+
+|                   StructureStamper.js                       |
+|  - canPlace(mapObject, blueprint, originX, originY): bool   |
+|  - stamp(mapObject, blueprint, originX, originY): Structure |
+|  - clearFootprint(mapObject, bounds)                        |
+|  - updateLocalPassability(mapObject, bounds)                |
++-------------------------------------------------------------+
+                              |
+                              v
++-------------------------------------------------------------+
+|                WorldStructurePlacer.js                      |
+|  - generateSettlement(mapObject, seed)                      |
+|  - generateDungeonBSP(bounds, minRoomSize)                  |
+|  - connectWithTrails(mapObject, fromDoor, toDoor)           |
++-------------------------------------------------------------+
+```

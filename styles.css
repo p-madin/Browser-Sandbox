@@ -28,16 +28,16 @@ body>div {
     fill: rgba(100, 100, 100, 0.3);
 }
 
-.cell.tree {
-    fill: rgb(126, 72, 8);
-}
-
 .cell.special {
     fill: rgba(255, 0, 0, 1) !important;
 }
 
 .cell.grass {
     fill: rgb(62, 186, 0);
+}
+
+.cell.tree {
+    fill: rgb(126, 72, 8);
 }
 
 .cell.blocked {

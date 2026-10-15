@@ -1,11 +1,8 @@
-class WalkingAgentDecoration extends cell_meta{
-    cell;
-    constructor(cell){
+class WalkingAgentDecoration extends cell_meta {
+    constructor(cell) {
         super();
-        this.cell = cell;
-    }
-    decorateCell(input){
-        input.push("walking");
-        this.cell.decorateCell(input);
+        var target = cell ? ((typeof cell.getCellMeta === 'function') ? cell.getCellMeta() : cell) : this;
+        target.addFlag(CellFlags.WALKING);
+        if (cell) return target;
     }
 }

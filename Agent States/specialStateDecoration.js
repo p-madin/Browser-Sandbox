@@ -1,11 +1,8 @@
-class SpecialDecoration extends cell_meta{
-    cell;
-    constructor(cell){
+class SpecialDecoration extends cell_meta {
+    constructor(cell) {
         super();
-        this.cell = cell;
-    }
-    decorateCell(input){
-        input.push("special");
-        this.cell.decorateCell(input);
+        var target = cell ? ((typeof cell.getCellMeta === 'function') ? cell.getCellMeta() : cell) : this;
+        target.addFlag(CellFlags.SPECIAL);
+        if (cell) return target;
     }
 }

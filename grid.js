@@ -182,8 +182,7 @@ class frame_meta {
                    && typeof globalMapObject.map_cells[map_x][map_y] !== 'undefined') {
                     cell_object = globalMapObject.map_cells[map_x][map_y];
                 } else {
-                    cell_object = new cell_meta(null, i, j, frame_count);
-                    cell_object = new BlockedDecoration(cell_object);
+                    cell_object = new cell_meta(null, i, j, frame_count, CellFlags.BLOCKED);
                 }
 
                 var cell_element = this.rect_elements[frame_count];

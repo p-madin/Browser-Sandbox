@@ -35,21 +35,17 @@ class mapObject {
                 if(typeof this.map_cells[i] === 'undefined'){
                     this.map_cells[i] = new Array();
                 }
-                this.map_cells[i][j] = new CellDecoration(cell_object);
                 if(cell_object.my_seed > 90){
-                    this.map_cells[i][j] = new BlockedDecoration(this.map_cells[i][j]);
+                    cell_object.addFlag(CellFlags.BLOCKED);
                 }
                 if(cell_object.my_seed.toFixed(1) == 59.7){
                     if(typeof this.all_grass_cells[i] === 'undefined'){
                         this.all_grass_cells[i] = new Array();
                     }
-                    this.map_cells[i][j] = new GrassDecoration(this.map_cells[i][j]);
+                    cell_object.addFlag(CellFlags.GRASS);
                     this.all_grass_cells[i][j] = "grass";
                 }
-                // if(Math.round(cell_object.my_seed) == 99){
-                //     this.all_cells[frame_count] = new SpecialDecoration(this.all_cells[frame_count]);
-                //     this.all_blocked_cells.splice(frame_count, 1);
-                // }
+                this.map_cells[i][j] = cell_object;
                 frame_count++;
             }
         }
@@ -80,14 +76,16 @@ class mapObject {
                     }
                 }
                 for(const [grass_key, grass_value] of Object.entries(this_selection)){
-                    this.map_cells[grass_value.getCellMeta().my_x][grass_value.getCellMeta().my_y] = new GrassDecoration(grass_value);
-                    if(Math.round(grass_value.getCellMeta().my_seed)%100<15){
-                        this.map_cells[grass_value.getCellMeta().my_x][grass_value.getCellMeta().my_y] = new TreeDecoration(grass_value);
+                    var cell = grass_value.getCellMeta();
+                    cell.addFlag(CellFlags.GRASS);
+                    if(Math.round(cell.my_seed)%100<15){
+                        cell.addFlag(CellFlags.TREE);
                     }
-                    if(grass_value.getCellMeta().my_seed<0.1){
-                        this.map_cells[grass_value.getCellMeta().my_x][grass_value.getCellMeta().my_y] = new EnemyDecoration(grass_value);
-                        this.all_agents.push(this.map_cells[grass_value.getCellMeta().my_x][grass_value.getCellMeta().my_y]);
+                    if(cell.my_seed<0.1){
+                        cell.addFlag(CellFlags.ENEMY);
+                        this.all_agents.push(cell);
                     }
+                    this.map_cells[cell.my_x][cell.my_y] = cell;
                 }
             }
         }

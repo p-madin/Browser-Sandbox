@@ -1,11 +1,8 @@
-class AgentDecoration extends cell_meta{
-    cell;
-    constructor(cell){
+class AgentDecoration extends cell_meta {
+    constructor(cell) {
         super();
-        this.cell = cell;
-    }
-    decorateCell(input){
-        input.push("agent");
-        this.cell.decorateCell(input);
+        var target = cell ? ((typeof cell.getCellMeta === 'function') ? cell.getCellMeta() : cell) : this;
+        target.addFlag(CellFlags.AGENT);
+        if (cell) return target;
     }
 }
