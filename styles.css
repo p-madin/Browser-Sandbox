@@ -1,88 +1,94 @@
-* {
-    margin:0;
-    padding:0
-  }
-body{
-    height:100%;
+﻿* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    height: 100%;
     font-family: sans-serif;
+    overflow: hidden;
+    background-color: #1a1a1a;
 }
-body>div{
-    height:100%
+body > div {
+    height: 100%;
+    overflow: hidden;
 }
-#frame{
-    height:99vh
+#frame {
+    height: 100vh;
+    width: 100vw;
+    display: block;
 }
-.cell{
-    
-    stroke:red;
-    fill:white;
-    /*
-    width:40px;
-    height:40px;
-    cell_element.setAttribute('fill', "white");
-    cell_element.setAttribute('width', "20px");
-    cell_element.setAttribute('height', "20px");
-    */
+.cell {
+    stroke: rgba(0, 0, 0, 0.15);
+    stroke-width: 0.5px;
+    fill: rgba(100, 100, 100, 0.3);
 }
-.cell{
-    fill:rgba(100,100,100,0.3)
+.cell.grass.agent, .cell.agent {
+    fill: rgba(0, 255, 0, 1);
 }
-.cell.grass.agent, .cell.agent{
-    fill:rgba(0,255,0,1)
+.cell.tree {
+    fill: rgb(126, 72, 8);
 }
-.cell.tree{
-    fill:rgb(126 72 8)
+.cell.special {
+    fill: rgba(255, 0, 0, 1) !important;
 }
-.cell.special{
-    fill:rgba(255,0,0,1) !important
+.cell.grass {
+    fill: rgb(62, 186, 0);
 }
-.cell.grass{
-    fill:rgb(62 186 0)
+.cell.blocked {
+    fill: rgba(0, 0, 0, 1);
 }
-.cell.blocked{
-    fill:rgba(0,0,0,1)
+.cell.selected, .cell.selected.path_step {
+    fill: rgba(200, 255, 200, 0.5);
 }
-.cell.selected, .cell.selected.path_step{
-    fill:rgba(200,255,200,0.5)
+.cell.selectedDestination {
+    fill: rgb(144, 215, 221);
 }
-.cell.selectedDestination{
-    fill:rgb(144 215 221)    
+.cell.path_step {
+    fill: rgba(200, 50, 50, 0.9);
 }
-.cell.path_step{
-    fill:rgba(200,50,50,0.9)
+.cell.agent.thinking {
+    fill: rgba(200, 200, 0, 1);
 }
-.cell.agent.thinking{
-    fill:rgba(200,200,0,1)
-    
+.cell.agent.walking {
+    fill: rgba(100, 100, 255, 1);
 }
-.cell.agent.walking{
-    fill:rgba(100,100,255,1)
-}
-.cell.enemy{
-    fill:rgb(190 0 0)
+.cell.enemy {
+    fill: rgb(190, 0, 0);
 }
 
-.path_options_disclosure{
-    background-color:rgba(255,255,255,0.7);
-    padding:5px 5px;
-    border:1px black solid;
-    position:fixed;
-    bottom:0;
-    right:0;
-    max-height:98%;
-    overflow-y: auto
+#player_avatar {
+    stroke: #0a0a0a;
+    stroke-width: 1.5px;
+    filter: drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.4));
 }
-.path_options_disclosure summary{
-    cursor:pointer;
+
+.path_options_disclosure {
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 6px 10px;
+    border: 1px #444 solid;
+    border-radius: 4px;
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    max-height: 90%;
+    overflow-y: auto;
+    font-size: 13px;
+    z-index: 100;
 }
-.path_options_disclosure #path_options .path_option{
-    padding: 3px 3px;
-    margin: 3px 0px;
-    border:solid black 1px;
-    border-radius:5px;
-    background-color:rgba(180,180,255,0.4)
+.path_options_disclosure summary {
+    cursor: pointer;
+    font-weight: bold;
 }
-.path_options_disclosure #path_options .path_option:hover{
-    color:white;
-    background-color:rgba(0,120,150,1)
+.path_options_disclosure #path_options .path_option {
+    padding: 3px 6px;
+    margin: 4px 0px;
+    border: solid #666 1px;
+    border-radius: 4px;
+    background-color: rgba(180, 180, 255, 0.5);
+    cursor: pointer;
+}
+.path_options_disclosure #path_options .path_option:hover {
+    color: white;
+    background-color: rgba(0, 120, 150, 1);
 }

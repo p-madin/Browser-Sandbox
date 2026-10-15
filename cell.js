@@ -164,20 +164,30 @@
     }
     cloneCellMeta() {
         var clone_source = this.getCellMeta();
-        return new cell_meta(clone_source.cell_element, clone_source.my_x, clone_source.my_y, clone_source.my_cell_ref);
+        var clone = new cell_meta(clone_source.cell_element, clone_source.my_x, clone_source.my_y, clone_source.my_cell_ref);
+        clone.my_seed = clone_source.my_seed;
+        clone.my_seed_ref = clone_source.my_seed_ref;
+        clone.my_step_option = clone_source.my_step_option ? [...clone_source.my_step_option] : [];
+        clone.my_neighbours = clone_source.my_neighbours ? [...clone_source.my_neighbours] : [];
+        clone.my_north = clone_source.my_north;
+        clone.my_south = clone_source.my_south;
+        clone.my_east = clone_source.my_east;
+        clone.my_west = clone_source.my_west;
+        clone.my_north_west = clone_source.my_north_west;
+        clone.my_north_east = clone_source.my_north_east;
+        clone.my_south_west = clone_source.my_south_west;
+        clone.my_south_east = clone_source.my_south_east;
+        return clone;
     }
-    removeDecoration(input, returnedObject = null) {
-        if (returnedObject == null) {
-            var returnedObject = this.cloneCellMeta();
-        }
-
+    removeDecoration(input) {
         if (this.constructor.name == 'cell_meta') {
-            return returnedObject;
+            return this;
         }
-        if (this.constructor.name != input) {
-            returnedObject = new (eval(this.constructor.name))(returnedObject);
+        if (this.constructor.name == input) {
+            return this.cell.removeDecoration(input);
         }
-        return this.cell.removeDecoration(input, returnedObject);
+        this.cell = this.cell.removeDecoration(input);
+        return this;
     }
     getDistance(target_cell) {
         var source_x = this.getCellMeta().my_x;
@@ -193,3 +203,4 @@
         return "X - " + this.my_x + "; Y - " + this.my_y + "; cell ref - " + this.my_cell_ref;
     }
 }
+

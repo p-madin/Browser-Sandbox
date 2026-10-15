@@ -178,3 +178,4 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
     - Subtle tone chime upon destination arrival.
   - SVG/Canvas particle burst (wood splinters, grass blades) when interacting with environment tiles.
 
+

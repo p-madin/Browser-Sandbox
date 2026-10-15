@@ -4,6 +4,9 @@
     self;
     destination;
     agentCellOccupied;
+    step_duration = 100;
+    activeAnimation = null;
+
     constructor() {
         self = this;
     }
@@ -26,16 +29,17 @@
 
         this.agentCellOccupied = this.agentCellOccupied.removeDecoration("ThinkingAgentDecoration");
         this.agentCellOccupied.decorateCell(new Array());
-        //pick a path
-        if (!best_options || best_options.length == 0) {
+
+        if (!best_options || best_options.length === 0) {
             console.log("Couldnt find a best option");
             return false;
         }
 
         globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y] = new SelectedDecoration(globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y]);
+        globalGridObject.updateGrid(this, true);
 
         var best_path = this.pickBestPath(best_options);
-        this.walkPath(best_path, false);
+        this.walkPath(best_path);
         return true;
     }
 
@@ -43,37 +47,71 @@
         return i_options[0];
     }
 
-    walkPath(i_path, step_final) {
-        let this_step = i_path[0].stepOptionFromCell.getCellMeta();
-
-        vector_horizontal = vector_horizontal + agent.x - this_step.my_x;
-        vector_vertical = vector_vertical + agent.y - this_step.my_y;
-        agent.x = this_step.my_x;
-        agent.y = this_step.my_y;
-
-        this.agentCellOccupied = this_step;
-        my_cache_offset = this_step.my_cell_ref;
-
-        // Phase 1 Retained DOM: In-place update without tearing down the DOM tree
-        globalGridObject.updateGrid(agent, step_final);
-
-        if (i_path.length == 1) {
-            if (!step_final) {
-                // The final step, reuse the last step, overwrite from with to
-                i_path[0].stepOptionFromCell = i_path[0].stepOptionToCell;
-                console.log(i_path[0].stepOptionFromCell.getCellMeta().my_step_option);
-                console.log(i_path[0].stepOptionToCell.getCellMeta().my_step_option);
-                setTimeout(function () {
-                    agent.walkPath(i_path, true);
-                }, 50);
-                return;
-            }
-            globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y] = globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y].removeDecoration("SelectedDecoration");
+    walkPath(i_path) {
+        if (!i_path || i_path.length === 0) {
             return;
         }
-        i_path.splice(0, 1);
-        setTimeout(function () {
-            agent.walkPath(i_path, false);
-        }, 50);
+
+        if (this.activeAnimation) {
+            cancelAnimationFrame(this.activeAnimation);
+            this.activeAnimation = null;
+        }
+
+        var self = this;
+        var step = i_path[0];
+        var from_meta = step.stepOptionFromCell.getCellMeta();
+        var to_meta = step.stepOptionToCell.getCellMeta();
+
+        var dx = to_meta.my_x - from_meta.my_x;
+        var dy = to_meta.my_y - from_meta.my_y;
+        var isDiagonal = (dx !== 0 && dy !== 0);
+
+        var duration = isDiagonal ? self.step_duration * 1.414 : self.step_duration;
+        var startTime = null;
+
+        globalGridObject.updateGrid(self, false);
+
+        function animateFrame(timestamp) {
+            if (!startTime) startTime = timestamp;
+            var elapsed = timestamp - startTime;
+            var t = Math.min(1.0, elapsed / duration);
+
+            var shiftX = -dx * t * globalGridObject.cell_size;
+            var shiftY = -dy * t * globalGridObject.cell_size;
+            globalGridObject.setViewportShift(shiftX, shiftY);
+
+            if (t < 1.0) {
+                self.activeAnimation = requestAnimationFrame(animateFrame);
+            } else {
+                globalGridObject.setViewportShift(0, 0);
+
+                vector_horizontal = vector_horizontal + self.x - to_meta.my_x;
+                vector_vertical = vector_vertical + self.y - to_meta.my_y;
+                self.x = to_meta.my_x;
+                self.y = to_meta.my_y;
+                self.agentCellOccupied = to_meta;
+                my_cache_offset = to_meta.my_cell_ref;
+
+                var isFinal = (i_path.length === 1);
+
+                if (isFinal) {
+                    self.activeAnimation = null;
+                    if (typeof to !== 'undefined' && to) {
+                        var to_x = to.getCellMeta().my_x;
+                        var to_y = to.getCellMeta().my_y;
+                        if (globalMapObject.map_cells[to_x] && globalMapObject.map_cells[to_x][to_y]) {
+                            globalMapObject.map_cells[to_x][to_y] = globalMapObject.map_cells[to_x][to_y].removeDecoration("SelectedDecoration");
+                        }
+                    }
+                    globalGridObject.updateGrid(self, true);
+                    return;
+                }
+
+                i_path.splice(0, 1);
+                self.walkPath(i_path);
+            }
+        }
+
+        self.activeAnimation = requestAnimationFrame(animateFrame);
     }
 }

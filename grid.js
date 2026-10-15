@@ -1,5 +1,8 @@
 ﻿class frame_meta {
     frame_element;
+    tiles_layer;
+    player_layer;
+    player_avatar;
     frame_size_width = 0;
     frame_size_height = 0;
     cell_size = 20;
@@ -26,7 +29,6 @@
         this.cell_size_y = Math.max(1, Math.floor(this.frame_size_height / this.cell_size));
         this.grid_mid_x = Math.floor(this.cell_size_x / 2);
         this.grid_mid_y = Math.floor(this.cell_size_y / 2);
-        this.grid_mid_cell = this.grid_mid_x * this.cell_size_y + this.grid_mid_y;
 
         if (i_agent.x == "unset") {
             i_agent.x = 0;
@@ -36,13 +38,36 @@
         }
 
         empty_frame(this.frame_element);
+
+        // Layer 1: Tiles layer for world tiles with smooth transform
+        this.tiles_layer = create_svg_element("g");
+        this.tiles_layer.setAttribute("id", "tiles_layer");
+        this.frame_element.appendChild(this.tiles_layer);
+
+        // Layer 2: Player layer for avatar
+        this.player_layer = create_svg_element("g");
+        this.player_layer.setAttribute("id", "player_layer");
+        this.frame_element.appendChild(this.player_layer);
+
+        this.player_avatar = create_svg_element("rect");
+        this.player_avatar.setAttribute("id", "player_avatar");
+        this.player_avatar.setAttribute("x", (this.grid_mid_x * this.cell_size) + "px");
+        this.player_avatar.setAttribute("y", (this.grid_mid_y * this.cell_size) + "px");
+        this.player_avatar.setAttribute("width", this.cell_size + "px");
+        this.player_avatar.setAttribute("height", this.cell_size + "px");
+        this.player_avatar.setAttribute("class", "cell agent");
+        this.player_avatar.style.pointerEvents = "none";
+        this.player_layer.appendChild(this.player_avatar);
+
         this.rect_elements = new Array();
         this.all_cells = new Array();
         this.all_blocked_cells = new Array();
 
+        // 1-tile margin buffer on all sides to prevent edge clipping during subpixel slide
+        var pad = 1;
         var frame_count = 0;
-        for (var i = 0; i < this.cell_size_x; i++) {
-            for (var j = 0; j < this.cell_size_y; j++) {
+        for (var i = -pad; i <= this.cell_size_x + pad; i++) {
+            for (var j = -pad; j <= this.cell_size_y + pad; j++) {
                 var cell_element = create_svg_element("rect");
                 cell_element.setAttribute('meta-frame', frame_count);
                 cell_element.setAttribute('class', "cell");
@@ -53,13 +78,28 @@
 
                 cell_element.addEventListener("click", this.handleCellClick.bind(this, cell_element));
 
-                this.frame_element.appendChild(cell_element);
+                this.tiles_layer.appendChild(cell_element);
                 this.rect_elements[frame_count] = cell_element;
+
+                if (i === this.grid_mid_x && j === this.grid_mid_y) {
+                    this.grid_mid_cell = frame_count;
+                }
+
                 frame_count++;
             }
         }
 
         this.updateGrid(i_agent, interactive);
+    }
+
+    setViewportShift(shiftX, shiftY) {
+        if (this.tiles_layer) {
+            if (shiftX === 0 && shiftY === 0) {
+                this.tiles_layer.removeAttribute("transform");
+            } else {
+                this.tiles_layer.setAttribute("transform", `translate(${shiftX.toFixed(2)}, ${shiftY.toFixed(2)})`);
+            }
+        }
     }
 
     handleCellClick(cell_element, e) {
@@ -84,9 +124,10 @@
             }
         }
 
+        var pad = 1;
         var frame_count = 0;
-        for (var i = 0; i < this.cell_size_x; i++) {
-            for (var j = 0; j < this.cell_size_y; j++) {
+        for (var i = -pad; i <= this.cell_size_x + pad; i++) {
+            for (var j = -pad; j <= this.cell_size_y + pad; j++) {
                 var map_x = i - vector_horizontal;
                 var map_y = j - vector_vertical;
                 var cell_object;
@@ -117,13 +158,22 @@
             }
         }
 
-        this.all_cells[this.grid_mid_cell] = new AgentDecoration(this.all_cells[this.grid_mid_cell]);
-        if (!this.interactive) {
-            this.all_cells[this.grid_mid_cell] = new WalkingAgentDecoration(this.all_cells[this.grid_mid_cell]);
-        }
-
         for (var k = 0; k < this.all_cells.length; k++) {
             this.all_cells[k].decorateCell(new Array());
+        }
+
+        // Update player avatar appearance and position
+        if (this.player_avatar) {
+            var avatarClass = "cell agent";
+            if (!this.interactive) {
+                avatarClass += " walking";
+            }
+            if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
+                avatarClass += " thinking";
+            }
+            this.player_avatar.setAttribute("class", avatarClass);
+            this.player_avatar.setAttribute("x", (this.grid_mid_x * this.cell_size) + "px");
+            this.player_avatar.setAttribute("y", (this.grid_mid_y * this.cell_size) + "px");
         }
 
         i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];

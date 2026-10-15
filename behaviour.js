@@ -1,9 +1,9 @@
 ﻿window.addEventListener("load", init);
-window.addEventListener("resize", function () {
-    if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
-        globalGridObject.buildGridPool(agent, globalGridObject.interactive);
-    }
-});
+// window.addEventListener("resize", function () {
+//     if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+//         globalGridObject.buildGridPool(agent, globalGridObject.interactive);
+//     }
+// });
 
 var globalMapObject, globalGridObject, agent, frame_root, my_cache_offset;
 var vector_horizontal = 0;
