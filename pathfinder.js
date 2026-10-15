@@ -1,4 +1,4 @@
-class pathfinder {
+﻿class pathfinder {
     best_size = Number.MAX_SAFE_INTEGER;
     unique_options = new Array();
     best_options = new Array();
@@ -14,103 +14,45 @@ class pathfinder {
         to = globalGridObject.all_cells[frame_id].getCellMeta();
         this.findUniquePath(i_agent);
 
-        //return;
         return this.best_options;
     }
     findUniquePath(i_agent) {
         this.best_size = Number.MAX_SAFE_INTEGER;
+        this.unique_options = new Array();
+        this.best_options = new Array();
 
         var current_node = i_agent.agentCellOccupied;
-        //path.push(i_agent.agentCellOccupied);
-
         var step_options_array = current_node.getCellMeta().my_step_option;
         var sorted_step_options_array = this.sortStepOptions(to, step_options_array);
-
-        //benchmarking
-        /*
-        for(var i=0;i<50;i++){
-            var index = Math.round(Math.random() * globalGridObject.all_cells.length);
-            console.log("Looking for: "+index);
-            //console.log(globalGridObject.all_cells[index]);
-            to = globalGridObject.all_cells[index].getCellMeta();
-            this.complexity = 0;
-            var path = new Array();
-            //path.push(i_agent.agentCellOccupied);
-            
-            var stepOptionRepresentation = new stepOption(null, i_agent.agentCellOccupied);
-            path.push(stepOptionRepresentation);
-            this.best_size = Number.MAX_SAFE_INTEGER;
-
-            for(var j=0;j<globalGridObject.all_cells.length;j++){
-                globalGridObject.all_cells[j].my_shortest_path = Number.MAX_SAFE_INTEGER;
-            }
-    
-            let visited = new Map();
-            this.findUniquePathRecurse(path, current_node, 1);
-            //this.findUniquePathRecurseGPT(path, current_node, 1);
-            
-        }
-        console.log(path);
-        console.log(this.unique_options);
-        for(var j=0;j<this.unique_options.length;j++){
-            var row = document.createElement("div");
-            row.setAttribute("class", "path_option");
-            row.setAttribute("data-path", j);
-            var row_text = document.createTextNode("Option #"+j+" Length: "+this.unique_options[j].length);
-            row.appendChild(row_text);
-            row.addEventListener("mouseover", highlightPathInteger);
-            path_optionsUI.appendChild(row);
-        }
-
-        //this.findUniquePathRecurse(path, sorted_step_options_array[i].cell, 1);
-        */
-        //benchmarking end
 
         for (var i = 0; i < sorted_step_options_array.length; i++) {
             var stepOptionRepresentation = new stepOption(i_agent.agentCellOccupied, sorted_step_options_array[i].cell);
             var path = new Array();
             path.push(stepOptionRepresentation);
-            //stepOptionRepresentation.stepOptionToCell = sorted_step_options_array[i].cell;
-            //this.findUniquePathRecurse(path, sorted_step_options_array[i].cell, 1);
             this.findUniquePathRecurseGPT(path, sorted_step_options_array[i].cell, 1);
         }
-        //console.log(path);
-        //console.log(this.unique_options);
-        //return;
-        /*
-        for(var j=0;j<this.unique_options.length;j++){
-            var row = document.createElement("div");
-            row.setAttribute("class", "path_option");
-            row.setAttribute("data-path", j);
-            var row_text = document.createTextNode("Option #"+j+" Length: "+this.unique_options[j].length);
-            row.appendChild(row_text);
-            row.addEventListener("mouseover", highlightPathInteger);
-            path_optionsUI.appendChild(row);
-        }
-        
 
-
-
-        return;
-        */
         for (var i = 0; i < this.unique_options.length; i++) {
-            //console.log(this.unique_options[i]);
-            //console.log(this.best_size);
-            //console.log(this.unique_options[i].length);
             if (this.unique_options[i].length == this.best_size) {
                 this.best_options.push(this.unique_options[i]);
             }
         }
-        for (var i = 0; i < this.unique_options.length; i++) {
-            var row = document.createElement("div");
-            row.setAttribute("class", "path_option");
-            row.setAttribute("data-path", i);
-            var row_text = document.createTextNode("Option #" + i + " Length: " + this.unique_options[i].length);
-            row.appendChild(row_text);
-            row.addEventListener("mouseover", highlightPathInteger);
-            path_optionsUI.appendChild(row);
+
+        if (typeof path_optionsUI !== 'undefined' && path_optionsUI) {
+            path_optionsUI.innerHTML = '';
+            for (var i = 0; i < this.unique_options.length; i++) {
+                var row = document.createElement("div");
+                row.setAttribute("class", "path_option");
+                row.setAttribute("data-path", i);
+                var row_text = document.createTextNode("Option #" + i + " Length: " + this.unique_options[i].length);
+                row.appendChild(row_text);
+                row.addEventListener("mouseover", highlightPathInteger);
+                path_optionsUI.appendChild(row);
+            }
         }
-        path_options_disclosureUI.setAttribute("open", "open");
+        if (typeof path_options_disclosureUI !== 'undefined' && path_options_disclosureUI) {
+            path_options_disclosureUI.setAttribute("open", "open");
+        }
     }
     sortStepOptions(to_cell, input_options) {
         var unsorted_step_options_array = new Array();
@@ -151,20 +93,14 @@ class pathfinder {
             deep_path.push(i_path[i]);
         }
 
-        //var stepOptionRepresentation = new stepOption(this_step, sorted_step_options_array[i].cell);
-        //deep_path.push(this_step);
         if (this_step.my_cell_ref == to.my_cell_ref) {
-            //found it
             if (deep_path.length < this.best_size) {
                 this.best_size = deep_path.length;
-                //this.garbageCollectOptions();
                 this.unique_options.push(deep_path);
             }
-
             return;
         }
         if (this_step.getCellMeta().my_step_option.length == 0) {
-            //no more options without backtracking
             return;
         }
         var step_options_array = this_step.getCellMeta().my_step_option;
@@ -177,11 +113,10 @@ class pathfinder {
         }
     }
     findUniquePathRecurseGPT(i_path, this_step, depth, visited = new Map()) {
-        //console.log('recurse find');
         this.complexity += 1;
         depth += 1;
         this_step = this_step.getCellMeta();
-        if (this.complexity > 1000000 || depth >= 55 || depth >= this.best_size) {
+        if (this.complexity > 1000000 || depth >= 55 || i_path.length > this.best_size) {
             return;
         }
 
@@ -189,18 +124,14 @@ class pathfinder {
             return;
         }
 
-        visited.set(this_step.my_cell_ref, depth);  // Mark as visited
+        visited.set(this_step.my_cell_ref, depth);
 
         if (this_step.my_cell_ref == to.my_cell_ref) {
-            //found it
             console.log('target found');
-            if (depth < this.best_size) {
-                this.best_size = depth;
-                //this.garbageCollectOptions();
+            if (i_path.length <= this.best_size) {
+                this.best_size = i_path.length;
                 this.unique_options.push([...i_path]);
             }
-            //visited.delete(this_step.my_cell_ref);  // Backtrack before returning
-
             return;
         }
         var step_options_array = this_step.my_step_option;
@@ -210,9 +141,9 @@ class pathfinder {
             var stepOptionRepresentation = new stepOption(this_step, sorted_step_options_array[i].cell);
             i_path.push(stepOptionRepresentation);
             this.findUniquePathRecurseGPT(i_path, sorted_step_options_array[i].cell, depth, visited);
-            i_path.pop();  // Backtrack path
+            i_path.pop();
         }
-        visited.delete(this_step.my_cell_ref);  // Backtrack visited
+        visited.delete(this_step.my_cell_ref);
     }
     garbageCollectOptions() {
         let i = 0;

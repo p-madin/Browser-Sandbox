@@ -1,4 +1,4 @@
-class cell_meta {
+﻿class cell_meta {
     cell_element;
     my_x = 0;
     my_y = 0;
@@ -117,9 +117,8 @@ class cell_meta {
         });
     }
     decorateCell(input) {
-        this.cell_element.classList.remove(...this.cell_element.classList);
-        for (var i = 0; i < input.length; i++) {
-            this.cell_element.classList.add(input[i]);
+        if (this.cell_element) {
+            this.cell_element.setAttribute("class", input.join(" "));
         }
     }
     getCellMeta() {

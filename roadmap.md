@@ -1,4 +1,4 @@
-# Project Roadmap: Grid Engine
+﻿# Project Roadmap: Grid Engine
 
 This document outlines the strategic engineering roadmap for Grid Engine, detailing current architectural bottlenecks, prioritized development phases, technical specifications, and recommended future expansions.
 
@@ -25,7 +25,7 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
 
 ### Phase 1: High-Performance Viewport Rendering & DOM Retention
 * **Current Bottleneck**:
-  Every step in [agent.js:walkPath](file:///c:/Workspace/HTML%20Workspace/GridV3/agent.js#L45-L68) calls `empty_frame(frame_root)` (`innerHTML = ''`), destroying and recreating 2,000–4,000 SVG `<rect>` elements every 50ms. This causes continuous layout recalculations, style recalculations, and garbage collection pressure.
+  Every step in [agent.js:walkPath](file:///c:/Workspace/HTML%20Workspace/GridV3/agent.js#L45-L68) calls `empty_frame(frame_root)` (`innerHTML = ''`), destroying and recreating 2,000â€“4,000 SVG `<rect>` elements every 50ms. This causes continuous layout recalculations, style recalculations, and garbage collection pressure.
 * **Architecture Solution**:
   1. **Persistent Tile Pool (Virtual Grid Window)**:
      - Instantiate SVG elements **once** during initialization based on viewport dimensions plus a 2-tile margin buffer.
@@ -72,9 +72,9 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
        $$\Delta x = \text{to.my\_x} - \text{from.my\_x}$$
        $$\Delta y = \text{to.my\_y} - \text{from.my\_y}$$
        $$\theta = \text{atan2}(\Delta y, \Delta x) \times \left(\frac{180}{\pi}\right)$$
-       *(e.g., East: 0°, South-East: 45°, South: 90°, South-West: 135°, West: 180°, North-West: -135°, North: -90°, North-East: -45°)*.
+       *(e.g., East: 0Â°, South-East: 45Â°, South: 90Â°, South-West: 135Â°, West: 180Â°, North-West: -135Â°, North: -90Â°, North-East: -45Â°)*.
   3. **Smooth Rotation Tween**:
-     - Apply `transform: rotate(θdeg)` with CSS transition easing (`transition: transform 120ms ease-out`), ensuring the character turns smoothly to face the path direction before and while walking.
+     - Apply `transform: rotate(Î¸deg)` with CSS transition easing (`transition: transform 120ms ease-out`), ensuring the character turns smoothly to face the path direction before and while walking.
 
 ---
 
@@ -85,10 +85,10 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
   1. **Dedicated Benchmark Module (`benchmark.js`)**:
      - Create a standalone test runner decoupled from game rendering.
   2. **Standardized Test Battery**:
-     - **Micro (1–5 steps)**: Direct cardinal and diagonal maneuvers.
-     - **Short (5–15 steps)**: Local obstacles and clearing navigation.
-     - **Medium (15–35 steps)**: Multi-biome traversal with tree grove routing.
-     - **Stress / Maze (35–55+ steps)**: Deep dead-end cul-de-sacs and wall-skirting.
+     - **Micro (1â€“5 steps)**: Direct cardinal and diagonal maneuvers.
+     - **Short (5â€“15 steps)**: Local obstacles and clearing navigation.
+     - **Medium (15â€“35 steps)**: Multi-biome traversal with tree grove routing.
+     - **Stress / Maze (35â€“55+ steps)**: Deep dead-end cul-de-sacs and wall-skirting.
      - **Unreachable Targets**: Pathing into isolated blocked clusters.
   3. **Automated Telemetry Capture**:
      - Execution time (sub-millisecond precision via `performance.now()`).
@@ -177,3 +177,4 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
     - Wooden crunch / thud sound on tree chopping.
     - Subtle tone chime upon destination arrival.
   - SVG/Canvas particle burst (wood splinters, grass blades) when interacting with environment tiles.
+
