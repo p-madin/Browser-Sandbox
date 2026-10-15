@@ -75,6 +75,13 @@ class agent_meta {
         var from_meta = step.stepOptionFromCell.getCellMeta();
         var to_meta = step.stepOptionToCell.getCellMeta();
 
+        // Phase 3: Auto-open closed doorway upon stepping through
+        if (to_meta && (to_meta.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED) || to_meta.hasFlag(CellFlags.STRUCTURE_DOOR)) && !to_meta.hasFlag(CellFlags.STRUCTURE_DOOR_OPEN)) {
+            if (typeof StructureInteractionSystem !== 'undefined') {
+                StructureInteractionSystem.autoOpenDoor(to_meta);
+            }
+        }
+
         var dx = to_meta.my_x - from_meta.my_x;
         var dy = to_meta.my_y - from_meta.my_y;
         var isDiagonal = (dx !== 0 && dy !== 0);

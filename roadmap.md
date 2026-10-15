@@ -112,26 +112,28 @@ This document outlines the strategic engineering roadmap for Grid Engine's multi
 ---
 
 ### Phase 3: Interactive Structural Mechanics & Dynamic Pathfinding Integration
+* **Status**: ✅ Completed
 * **Motivation**:
   Structures should not be static geometry. Doors must be openable and lockable, barricades destructible, and navigation must adapt dynamically in real-time as doorways open or close without requiring a full map rebuild.
 * **Architecture Solution**:
   1. **Interactive Doorways & State Machines**:
      - `CellFlags.DOOR_CLOSED` vs. `CellFlags.DOOR_OPEN`:
        - Closed doors act as collision blockers (`isBlockedType() === true`).
-       - Clicking a closed door within interaction reach (distance $\le 1.4$) toggles it open, immediately removing collision, updating CSS styling, and reconnecting adjacent graph edges.
+       - Clicking a closed door within interaction reach (distance $\le 1.5$) toggles it open, immediately removing collision, updating CSS styling, and reconnecting adjacent graph edges.
   2. **Dynamic A* Graph Invalidation & Route Re-evaluation**:
      - When a door state transitions, invoke local passability updates:
        `doorCell.determineNeighboursPassable(globalMapObject)` and notify immediate neighbors.
-     - Enable A* pathfinder to optionally consider closed doors as traverse-with-interaction steps: player can click beyond a closed door, the pathfinder routes through it, and the agent auto-opens doors upon arrival.
+     - Enable A* pathfinder to consider closed doors as traverse-with-interaction steps (+1.5 cost penalty): player can click beyond a closed door, the pathfinder routes through it, and the agent auto-opens doors upon arrival.
   3. **Destructible Barricades & Woodcutting Integration**:
-     - Wooden barricades and cracked stone walls support degradation counters (e.g., 3 chops with axe).
-     - Integrated with the player's interaction distance checks from Phase 7.
+     - Wooden barricades support degradation counters (3 hits with damage feedback toast).
+     - Upon destruction, transitions to a cleared passable pathway with immediate local graph synchronization.
   4. **Interior Fixtures (Containers / Chests / Beds)**:
-     - Interactive anchor points with custom hover and click inspection dialogs.
+     - Interactive anchor points with custom hover and click inspection dialogs (`StructureInteractionSystem.showToast()`).
 
 ---
 
 ### Phase 4: Multi-Layer Interior Occlusion & Dynamic Roof Cutaway
+* **Status**: 🟡 Next
 * **Motivation**:
   When structures possess roofs or upper canopies, the player cannot see interior layouts from the outside. However, upon walking inside, the roof must seamlessly fade away so the interior floor plan and objects are clear.
 * **Architecture Solution**:

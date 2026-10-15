@@ -257,6 +257,31 @@ const StructureLibrary = {
     }),
 
     /**
+     * 3x3 Bandit Barricade: Heavily fortified timber barricade guarding a hidden loot stash.
+     */
+    BanditBarricade: new StructureBlueprint({
+        id: "bandit_barricade",
+        name: "Bandit Barricade",
+        category: "obstacle",
+        width: 3,
+        height: 3,
+        origin: { x: 1, y: 2 },
+        tags: ["obstacle", "defensive", "bandit"],
+        layers: {
+            floor: [
+                [0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]
+            ],
+            walls: [
+                ["W", "F", "W"], // F = Loot stash behind barricade
+                ["W", "B", "W"], // B = Destructible barricade
+                [ 0 , "P",  0 ]  // P = Pathway approach
+            ]
+        }
+    }),
+
+    /**
      * Retrieves a fresh clone of a blueprint by ID.
      * @param {string} id 
      * @returns {StructureBlueprint|null}

@@ -11,7 +11,8 @@ body {
     background-color: #1a1a1a;
 }
 
-body>div {
+#canvas_container,
+body > div.canvas_container {
     height: 100%;
     overflow: hidden;
 }
@@ -84,12 +85,37 @@ body>div {
     fill: #d97706;
     stroke: #78350f;
     stroke-width: 1px;
+    cursor: pointer;
+}
+
+.cell.structure_door.closed {
+    fill: #b45309;
+    stroke: #fbbf24;
+    stroke-width: 1.5px;
+    stroke-dasharray: 2 1;
+}
+
+.cell.structure_door.open {
+    fill: #166534;
+    stroke: #4ade80;
+    stroke-width: 1px;
+    stroke-dasharray: none;
+    opacity: 0.85;
+}
+
+.cell.structure_barricade {
+    fill: #78350f;
+    stroke: #f97316;
+    stroke-width: 1.5px;
+    stroke-dasharray: 3 1.5;
+    cursor: pointer;
 }
 
 .cell.structure_fixture {
     fill: #dc2626;
-    stroke: #991b1b;
+    stroke: #fef08a;
     stroke-width: 1px;
+    cursor: pointer;
 }
 
 .cell.structure_roof {
@@ -717,4 +743,53 @@ body>div {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Structure Interaction System Toast Notification (Phase 3) */
+#structure_toast,
+.structure_toast {
+    position: fixed;
+    top: 24px;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%) translateY(-12px) scale(0.96);
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    width: auto !important;
+    max-width: min(90vw, 480px) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.90);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.22s;
+    z-index: 9999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
+}
+
+#structure_toast.visible,
+.structure_toast.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
 }

@@ -402,7 +402,10 @@ class AStarStrategy extends IPathfinderStrategy {
                 const dx = Math.abs(nextMeta.my_x - currentMeta.my_x);
                 const dy = Math.abs(nextMeta.my_y - currentMeta.my_y);
                 const isDiagonal = (dx !== 0 && dy !== 0);
-                const stepCost = isDiagonal ? 1.41421356237 : 1.0;
+                let stepCost = isDiagonal ? 1.41421356237 : 1.0;
+                if (nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR) && !nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_OPEN)) {
+                    stepCost += 1.5;
+                }
 
                 const tentativeG = currentG + stepCost;
 

@@ -51,8 +51,11 @@ class StructureStamper {
             if (playerX >= startX && playerX <= endX && playerY >= startY && playerY <= endY) {
                 const localX = playerX - startX;
                 const localY = playerY - startY;
-                if (blueprint.layers.walls && blueprint.layers.walls[localY] && blueprint.layers.walls[localY][localX] === "W") {
-                    return false; // Would trap or crush the player in a wall
+                if (blueprint.layers.walls && blueprint.layers.walls[localY]) {
+                    const token = blueprint.layers.walls[localY][localX];
+                    if (token === "W" || token === "B") {
+                        return false; // Would trap or crush the player in a wall or barricade
+                    }
                 }
             }
         }
@@ -97,7 +100,7 @@ class StructureStamper {
                     cell.addFlag(CellFlags.STRUCTURE_FLOOR);
                 }
 
-                // Apply walls/fixtures/doors layer
+                // Apply walls/fixtures/doors/barricades layer
                 const wallToken = blueprint.layers.walls && blueprint.layers.walls[y] ? blueprint.layers.walls[y][x] : 0;
                 if (wallToken === "W") {
                     cell.addFlag(CellFlags.STRUCTURE_WALL);
@@ -107,6 +110,9 @@ class StructureStamper {
                     cell.addFlag(CellFlags.STRUCTURE_FIXTURE);
                 } else if (wallToken === "P") {
                     cell.addFlag(CellFlags.STRUCTURE_PATH);
+                } else if (wallToken === "B") {
+                    cell.addFlag(CellFlags.STRUCTURE_BARRICADE);
+                    cell.durability = 3;
                 }
 
                 cell.structureId = instanceId;

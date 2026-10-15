@@ -13,13 +13,16 @@ const CellFlags = Object.freeze({
     SPECIAL: 1 << 6,       // 64  - Special interactive tile
     THINKING: 1 << 7,      // 128 - Agent thinking state
     WALKING: 1 << 8,       // 256 - Agent walking state
-    // Structural Components (Phase 1)
+    // Structural Components (Phase 1 & 3)
     STRUCTURE_WALL: 1 << 9,     // 512   - Impassable structural wall
     STRUCTURE_FLOOR: 1 << 10,   // 1024  - Interior floor (wood plank / stone tile)
-    STRUCTURE_DOOR: 1 << 11,    // 2048  - Ingress/egress doorway opening
+    STRUCTURE_DOOR: 1 << 11,    // 2048  - Ingress/egress doorway opening (default closed)
+    STRUCTURE_DOOR_CLOSED: 1 << 11, // 2048 - Closed doorway (impassable without open action)
     STRUCTURE_ROOF: 1 << 12,    // 4096  - Overhead canopy / roof tile
     STRUCTURE_FIXTURE: 1 << 13, // 8192  - Internal fixture (chest, bench, hearth)
-    STRUCTURE_PATH: 1 << 14     // 16384 - Exterior gravel / stone pathway
+    STRUCTURE_PATH: 1 << 14,    // 16384 - Exterior gravel / stone pathway
+    STRUCTURE_DOOR_OPEN: 1 << 15, // 32768 - Opened doorway (passable)
+    STRUCTURE_BARRICADE: 1 << 16  // 65536 - Destructible wooden barricade
 });
 
 /**
@@ -56,6 +59,12 @@ const CellFlagAliases = Object.freeze({
     "StructureDoor": CellFlags.STRUCTURE_DOOR,
     "structure_door": CellFlags.STRUCTURE_DOOR,
     "door": CellFlags.STRUCTURE_DOOR,
+    "StructureDoorClosed": CellFlags.STRUCTURE_DOOR_CLOSED,
+    "door_closed": CellFlags.STRUCTURE_DOOR_CLOSED,
+    "StructureDoorOpen": CellFlags.STRUCTURE_DOOR_OPEN,
+    "door_open": CellFlags.STRUCTURE_DOOR_OPEN,
+    "StructureBarricade": CellFlags.STRUCTURE_BARRICADE,
+    "barricade": CellFlags.STRUCTURE_BARRICADE,
     "StructureRoof": CellFlags.STRUCTURE_ROOF,
     "structure_roof": CellFlags.STRUCTURE_ROOF,
     "roof": CellFlags.STRUCTURE_ROOF,
@@ -141,7 +150,7 @@ class cell_meta {
     }
 
     isBlockedType() {
-        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL)) !== 0;
+        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE)) !== 0;
     }
 
     // --- Compatibility Methods ---
@@ -226,8 +235,13 @@ class cell_meta {
         if (this.flags & CellFlags.STRUCTURE_FLOOR) classes.push("structure_floor");
         if (this.flags & CellFlags.STRUCTURE_PATH) classes.push("structure_path");
         if (this.flags & CellFlags.STRUCTURE_WALL) classes.push("structure_wall");
-        if (this.flags & CellFlags.STRUCTURE_DOOR) classes.push("structure_door");
+        if (this.flags & CellFlags.STRUCTURE_DOOR_OPEN) {
+            classes.push("structure_door", "open");
+        } else if (this.flags & (CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR)) {
+            classes.push("structure_door", "closed");
+        }
         if (this.flags & CellFlags.STRUCTURE_FIXTURE) classes.push("structure_fixture");
+        if (this.flags & CellFlags.STRUCTURE_BARRICADE) classes.push("structure_barricade");
         if (this.flags & CellFlags.STRUCTURE_ROOF) classes.push("structure_roof");
 
         if (Array.isArray(input)) {
@@ -276,48 +290,54 @@ class cell_meta {
             this.my_neighbours.push(mapObject.map_cells[i][j + 1]);
         }
 
+        const canStepInto = (c) => {
+            if (!c) return false;
+            if (!c.isBlockedType()) return true;
+            return c.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR);
+        };
+
         // Cardinal directions
-        if (i > mapObject.min_width && !mapObject.map_cells[i - 1][j].isBlockedType()) {
+        if (i > mapObject.min_width && canStepInto(mapObject.map_cells[i - 1][j])) {
             this.my_west = mapObject.map_cells[i - 1][j];
             this.my_step_option.push(mapObject.map_cells[i - 1][j]);
         }
-        if (i < mapObject.max_width - 1 && !mapObject.map_cells[i + 1][j].isBlockedType()) {
+        if (i < mapObject.max_width - 1 && canStepInto(mapObject.map_cells[i + 1][j])) {
             this.my_east = mapObject.map_cells[i + 1][j];
             this.my_step_option.push(mapObject.map_cells[i + 1][j]);
         }
-        if (j > mapObject.min_height && !mapObject.map_cells[i][j - 1].isBlockedType()) {
+        if (j > mapObject.min_height && canStepInto(mapObject.map_cells[i][j - 1])) {
             this.my_north = mapObject.map_cells[i][j - 1];
             this.my_step_option.push(mapObject.map_cells[i][j - 1]);
         }
-        if (j < mapObject.max_height - 1 && !mapObject.map_cells[i][j + 1].isBlockedType()) {
+        if (j < mapObject.max_height - 1 && canStepInto(mapObject.map_cells[i][j + 1])) {
             this.my_south = mapObject.map_cells[i][j + 1];
             this.my_step_option.push(mapObject.map_cells[i][j + 1]);
         }
 
         // Diagonal directions (corner-cut protected)
-        if (j > mapObject.min_height && !mapObject.map_cells[i][j - 1].isBlockedType()) {
-            if (i > mapObject.min_width && !mapObject.map_cells[i - 1][j].isBlockedType()) {
-                if (!mapObject.map_cells[i - 1][j - 1].isBlockedType()) {
+        if (j > mapObject.min_height && canStepInto(mapObject.map_cells[i][j - 1])) {
+            if (i > mapObject.min_width && canStepInto(mapObject.map_cells[i - 1][j])) {
+                if (canStepInto(mapObject.map_cells[i - 1][j - 1])) {
                     this.my_north_west = mapObject.map_cells[i - 1][j - 1];
                     this.my_step_option.push(mapObject.map_cells[i - 1][j - 1]);
                 }
             }
-            if (i < mapObject.max_width - 1 && !mapObject.map_cells[i + 1][j].isBlockedType()) {
-                if (!mapObject.map_cells[i + 1][j - 1].isBlockedType()) {
+            if (i < mapObject.max_width - 1 && canStepInto(mapObject.map_cells[i + 1][j])) {
+                if (canStepInto(mapObject.map_cells[i + 1][j - 1])) {
                     this.my_north_east = mapObject.map_cells[i + 1][j - 1];
                     this.my_step_option.push(mapObject.map_cells[i + 1][j - 1]);
                 }
             }
         }
-        if (j < mapObject.max_height - 1 && !mapObject.map_cells[i][j + 1].isBlockedType()) {
-            if (i > mapObject.min_width && !mapObject.map_cells[i - 1][j].isBlockedType()) {
-                if (!mapObject.map_cells[i - 1][j + 1].isBlockedType()) {
+        if (j < mapObject.max_height - 1 && canStepInto(mapObject.map_cells[i][j + 1])) {
+            if (i > mapObject.min_width && canStepInto(mapObject.map_cells[i - 1][j])) {
+                if (canStepInto(mapObject.map_cells[i - 1][j + 1])) {
                     this.my_south_west = mapObject.map_cells[i - 1][j + 1];
                     this.my_step_option.push(mapObject.map_cells[i - 1][j + 1]);
                 }
             }
-            if (i < mapObject.max_width - 1 && !mapObject.map_cells[i + 1][j].isBlockedType()) {
-                if (!mapObject.map_cells[i + 1][j + 1].isBlockedType()) {
+            if (i < mapObject.max_width - 1 && canStepInto(mapObject.map_cells[i + 1][j])) {
+                if (canStepInto(mapObject.map_cells[i + 1][j + 1])) {
                     this.my_south_east = mapObject.map_cells[i + 1][j + 1];
                     this.my_step_option.push(mapObject.map_cells[i + 1][j + 1]);
                 }
@@ -344,6 +364,24 @@ class cell_meta {
         // Enemy interaction (Encounter or Navigation Probe)
         if (target_cell.hasFlag(CellFlags.ENEMY)) {
             await target_cell.handleEnemyInteraction(elem, e);
+            return;
+        }
+
+        // Doorway interaction (Open / Close or Navigation Probe)
+        if (target_cell.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_DOOR)) {
+            await target_cell.handleDoorInteraction(elem, e);
+            return;
+        }
+
+        // Barricade interaction (Destruction or Navigation Probe)
+        if (target_cell.hasFlag(CellFlags.STRUCTURE_BARRICADE)) {
+            await target_cell.handleBarricadeInteraction(elem, e);
+            return;
+        }
+
+        // Fixture interaction (Chest / Shrine / Hearth inspection)
+        if (target_cell.hasFlag(CellFlags.STRUCTURE_FIXTURE)) {
+            await target_cell.handleFixtureInteraction(elem, e);
             return;
         }
 
@@ -443,5 +481,145 @@ class cell_meta {
 
     toString() {
         return "X - " + this.my_x + "; Y - " + this.my_y + "; cell ref - " + this.my_cell_ref + "; flags - " + this.flags;
+    }
+
+    async handleDoorInteraction(elem, e) {
+        var target_x = this.my_x;
+        var target_y = this.my_y;
+        var dist = Math.hypot(agent.x - target_x, agent.y - target_y);
+
+        if (dist <= 1.5) {
+            var map_cell = (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells[target_x]) 
+                ? globalMapObject.map_cells[target_x][target_y] 
+                : this;
+
+            var isCurrentlyClosed = (this.flags & (CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR)) !== 0 
+                && (this.flags & CellFlags.STRUCTURE_DOOR_OPEN) === 0;
+
+            if (isCurrentlyClosed) {
+                this.removeFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR);
+                this.addFlag(CellFlags.STRUCTURE_DOOR_OPEN);
+                if (map_cell !== this) {
+                    map_cell.removeFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR);
+                    map_cell.addFlag(CellFlags.STRUCTURE_DOOR_OPEN);
+                }
+                if (typeof StructureInteractionSystem !== 'undefined') {
+                    StructureInteractionSystem.showToast("🚪 Opened door");
+                }
+            } else {
+                this.removeFlag(CellFlags.STRUCTURE_DOOR_OPEN);
+                this.addFlag(CellFlags.STRUCTURE_DOOR_CLOSED);
+                if (map_cell !== this) {
+                    map_cell.removeFlag(CellFlags.STRUCTURE_DOOR_OPEN);
+                    map_cell.addFlag(CellFlags.STRUCTURE_DOOR_CLOSED);
+                }
+                if (typeof StructureInteractionSystem !== 'undefined') {
+                    StructureInteractionSystem.showToast("🚪 Closed door");
+                }
+            }
+
+            if (typeof globalMapObject !== 'undefined') {
+                map_cell.determineNeighboursPassable(globalMapObject);
+                for (var i = 0; i < map_cell.my_neighbours.length; i++) {
+                    if (map_cell.my_neighbours[i]) {
+                        map_cell.my_neighbours[i].determineNeighboursPassable(globalMapObject);
+                    }
+                }
+            }
+
+            this.decorateCell([]);
+            if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+                globalGridObject.updateGrid(agent, true);
+            }
+        } else {
+            var candidateOptions = (this.my_step_option && this.my_step_option.length > 0)
+                ? this.my_step_option 
+                : this.my_neighbours.filter(n => !n.isBlockedType());
+            var pf = new pathfinder();
+            var sortedOptions = pf.sortStepOptions(agent.agentCellOccupied.getCellMeta(), candidateOptions);
+            for (var i = 0; i < sortedOptions.length; i++) {
+                var probeTarget = sortedOptions[i].cell.getCellMeta();
+                var reached = await probeTarget.setAnchorProbe(probeTarget.cell_element);
+                if (reached) break;
+            }
+        }
+    }
+
+    async handleBarricadeInteraction(elem, e) {
+        var target_x = this.my_x;
+        var target_y = this.my_y;
+        var dist = Math.hypot(agent.x - target_x, agent.y - target_y);
+
+        if (dist <= 1.5) {
+            var map_cell = (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells[target_x]) 
+                ? globalMapObject.map_cells[target_x][target_y] 
+                : this;
+
+            this.durability = (this.durability !== undefined ? this.durability : 3) - 1;
+            map_cell.durability = this.durability;
+
+            if (this.durability > 0) {
+                if (typeof StructureInteractionSystem !== 'undefined') {
+                    StructureInteractionSystem.showToast(`💥 Damaged barricade (${this.durability}/3)`);
+                }
+            } else {
+                this.removeFlag(CellFlags.STRUCTURE_BARRICADE);
+                this.addFlag(CellFlags.STRUCTURE_PATH);
+                if (map_cell !== this) {
+                    map_cell.removeFlag(CellFlags.STRUCTURE_BARRICADE);
+                    map_cell.addFlag(CellFlags.STRUCTURE_PATH);
+                }
+
+                if (typeof globalMapObject !== 'undefined') {
+                    map_cell.determineNeighboursPassable(globalMapObject);
+                    for (var i = 0; i < map_cell.my_neighbours.length; i++) {
+                        if (map_cell.my_neighbours[i]) {
+                            map_cell.my_neighbours[i].determineNeighboursPassable(globalMapObject);
+                        }
+                    }
+                }
+                this.decorateCell([]);
+                if (typeof StructureInteractionSystem !== 'undefined') {
+                    StructureInteractionSystem.showToast("🪓 Smashed barricade! Pathway cleared.");
+                }
+                if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+                    globalGridObject.updateGrid(agent, true);
+                }
+            }
+        } else {
+            var candidateOptions = (this.my_step_option && this.my_step_option.length > 0)
+                ? this.my_step_option 
+                : this.my_neighbours.filter(n => !n.isBlockedType());
+            var pf = new pathfinder();
+            var sortedOptions = pf.sortStepOptions(agent.agentCellOccupied.getCellMeta(), candidateOptions);
+            for (var i = 0; i < sortedOptions.length; i++) {
+                var probeTarget = sortedOptions[i].cell.getCellMeta();
+                var reached = await probeTarget.setAnchorProbe(probeTarget.cell_element);
+                if (reached) break;
+            }
+        }
+    }
+
+    async handleFixtureInteraction(elem, e) {
+        var target_x = this.my_x;
+        var target_y = this.my_y;
+        var dist = Math.hypot(agent.x - target_x, agent.y - target_y);
+
+        if (dist <= 1.5) {
+            if (typeof StructureInteractionSystem !== 'undefined') {
+                StructureInteractionSystem.inspectFixture(this);
+            }
+        } else {
+            var candidateOptions = (this.my_step_option && this.my_step_option.length > 0)
+                ? this.my_step_option 
+                : this.my_neighbours.filter(n => !n.isBlockedType());
+            var pf = new pathfinder();
+            var sortedOptions = pf.sortStepOptions(agent.agentCellOccupied.getCellMeta(), candidateOptions);
+            for (var i = 0; i < sortedOptions.length; i++) {
+                var probeTarget = sortedOptions[i].cell.getCellMeta();
+                var reached = await probeTarget.setAnchorProbe(probeTarget.cell_element);
+                if (reached) break;
+            }
+        }
     }
 }
