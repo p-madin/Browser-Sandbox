@@ -1,0 +1,82 @@
+* {
+    margin:0;
+    padding:0
+  }
+body{
+    height:100%;
+    font-family: sans-serif;
+}
+body>div{
+    height:100%
+}
+#frame{
+    height:99vh
+}
+.cell{
+    
+    stroke:red;
+    fill:white;
+    /*
+    width:40px;
+    height:40px;
+    cell_element.setAttribute('fill', "white");
+    cell_element.setAttribute('width', "20px");
+    cell_element.setAttribute('height', "20px");
+    */
+}
+.cell{
+    fill:rgba(100,100,100,0.3)
+}
+.cell.grass.agent, .cell.agent{
+    fill:rgba(0,255,0,1)
+}
+.cell.tree{
+    fill:rgb(126 72 8)
+}
+.cell.special{
+    fill:rgba(255,0,0,1) !important
+}
+.cell.grass{
+    fill:rgb(62 186 0)
+}
+.cell.blocked{
+    fill:rgba(0,0,0,1)
+}
+.cell.selected, .cell.selected.path_step{
+    fill:rgba(200,255,200,0.5)
+}
+.cell.path_step{
+    fill:rgba(200,200,200,0.5)
+}
+.cell.agent.thinking{
+    fill:rgba(200,200,0,1)
+    
+}
+.cell.agent.walking{
+    fill:rgba(100,100,255,1)
+}
+
+.path_options_disclosure{
+    background-color:rgba(255,255,255,0.7);
+    padding:5px 5px;
+    border:1px black solid;
+    position:fixed;
+    bottom:0;
+    right:0;
+    max-height:98%;
+    overflow-y: auto
+}
+.path_options_disclosure summary{
+    cursor:pointer;
+}
+.path_options_disclosure #path_options .path_option{
+    padding: 3px 3px;
+    margin: 3px 0px;
+    border:solid black 1px;
+    border-radius:5px;
+    background-color:rgba(180,180,255,0.4)
+}
+.path_options_disclosure #path_options .path_option:hover{
+    color:white;
+    background-color:rgba(0,120,150,1)
+}
