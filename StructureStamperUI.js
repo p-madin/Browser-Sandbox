@@ -72,6 +72,34 @@ class StructureStamperUI {
                 this.stampRandom();
             });
         }
+
+        const bspBtn = document.getElementById("structure_generate_bsp_btn");
+        if (bspBtn) {
+            bspBtn.addEventListener("click", () => {
+                this.generateAndStampBSP();
+            });
+        }
+    }
+
+    static generateAndStampBSP() {
+        if (typeof BSPStructureGenerator === 'undefined' || typeof globalMapObject === 'undefined' || !globalMapObject) {
+            this.updateStatus("Error: Generator not ready");
+            return;
+        }
+
+        const dungeonBP = BSPStructureGenerator.generateDungeon({
+            width: 13,
+            height: 13,
+            name: "Procedural Catacombs"
+        });
+
+        this.activeBlueprint = dungeonBP;
+        const inst = StructureStamper.stampRandom(globalMapObject, dungeonBP, 60);
+        if (inst) {
+            this.updateStatus(`Procedural BSP Dungeon stamped at (${inst.originX}, ${inst.originY})`);
+        } else {
+            this.updateStatus("Could not find clear space for 13x13 dungeon");
+        }
     }
 
     static updateActiveBlueprint() {

@@ -6,7 +6,9 @@
     <script src="behaviour.js" type="text/javascript"></script>
     <script src="cell.js" type="text/javascript"></script>
     <script src="StructureBlueprint.js" type="text/javascript"></script>
+    <script src="BSPStructureGenerator.js" type="text/javascript"></script>
     <script src="StructureStamper.js" type="text/javascript"></script>
+    <script src="WorldStructurePlacer.js" type="text/javascript"></script>
     <script src="mapObject.js" type="text/javascript"></script>
     <script src="grid.js" type="text/javascript"></script>
     <script src="agent.js" type="text/javascript"></script>
@@ -37,7 +39,7 @@
         <svg id="frame" height="100%" width="100%"></svg>
     </div>
 
-    <!-- Structure Blueprint Stamper (Phase 1) -->
+    <!-- Structure Blueprint Stamper (Phase 1 & 2) -->
     <div id="structure_panel" class="structure_panel">
         <div class="structure_header">
             <div class="structure_title">
@@ -58,6 +60,9 @@
             <div class="structure_button_row">
                 <button id="structure_stamp_near_btn" class="structure_btn primary">🛠️ Stamp Near Player</button>
                 <button id="structure_stamp_random_btn" class="structure_btn">🎲 Random</button>
+            </div>
+            <div class="structure_button_row">
+                <button id="structure_generate_bsp_btn" class="structure_btn" style="background: #1e3a8a; border-color: #3b82f6;">🏰 Generate BSP Dungeon</button>
             </div>
             <div id="structure_status" class="structure_status">Ready to stamp</div>
         </div>

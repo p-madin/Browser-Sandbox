@@ -91,7 +91,9 @@ class mapObject {
             }
         }
         this.structures = [];
-        if (typeof StructureStamper !== 'undefined' && typeof StructureLibrary !== 'undefined') {
+        if (typeof WorldStructurePlacer !== 'undefined') {
+            WorldStructurePlacer.populateWorld(this);
+        } else if (typeof StructureStamper !== 'undefined' && typeof StructureLibrary !== 'undefined') {
             StructureStamper.stampStarterSettlement(this);
         }
         for (var i = this.min_width; i < this.max_width; i++) {
