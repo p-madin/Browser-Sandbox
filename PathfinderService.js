@@ -406,6 +406,19 @@ class AStarStrategy extends IPathfinderStrategy {
                 if (nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR) && !nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_OPEN)) {
                     stepCost += 1.5;
                 }
+                if (nextMeta.hasFlag(CellFlags.WATER_SHALLOW) && !nextMeta.hasFlag(CellFlags.STRUCTURE_BRIDGE)) {
+                    stepCost += 1.5; // Shallow water wading penalty (bridges exempt)
+                }
+
+                // Elevation slope kinetic modifier (uphill +0.4, downhill -0.1)
+                const fromElev = currentMeta.elevation !== undefined ? currentMeta.elevation : 1;
+                const toElev = nextMeta.elevation !== undefined ? nextMeta.elevation : 1;
+                const elevDelta = toElev - fromElev;
+                if (elevDelta > 0) {
+                    stepCost += 0.4 * elevDelta;
+                } else if (elevDelta < 0) {
+                    stepCost = Math.max(0.2, stepCost - 0.1 * Math.abs(elevDelta));
+                }
 
                 const tentativeG = currentG + stepCost;
 

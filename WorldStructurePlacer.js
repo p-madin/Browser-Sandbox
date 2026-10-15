@@ -113,6 +113,16 @@ class WorldStructurePlacer {
                 if (!cell.hasFlag(CellFlags.STRUCTURE_WALL) && !cell.hasFlag(CellFlags.STRUCTURE_FLOOR)) {
                     cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
                     cell.addFlag(CellFlags.STRUCTURE_PATH);
+                    if (cell.hasFlag(CellFlags.WATER)) {
+                        cell.addFlag(CellFlags.STRUCTURE_BRIDGE);
+                    }
+                    if (trailCells.length > 0) {
+                        const prev = trailCells[trailCells.length - 1];
+                        if (Math.abs((prev.elevation || 1) - (cell.elevation || 1)) >= 1) {
+                            prev.addFlag(CellFlags.TERRAIN_RAMP);
+                            cell.addFlag(CellFlags.TERRAIN_RAMP);
+                        }
+                    }
                     trailCells.push(cell);
                     cell.decorateCell([]);
                 }

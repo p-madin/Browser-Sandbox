@@ -22,7 +22,15 @@ const CellFlags = Object.freeze({
     STRUCTURE_FIXTURE: 1 << 13, // 8192  - Internal fixture (chest, bench, hearth)
     STRUCTURE_PATH: 1 << 14,    // 16384 - Exterior gravel / stone pathway
     STRUCTURE_DOOR_OPEN: 1 << 15, // 32768 - Opened doorway (passable)
-    STRUCTURE_BARRICADE: 1 << 16  // 65536 - Destructible wooden barricade
+    STRUCTURE_BARRICADE: 1 << 16, // 65536 - Destructible wooden barricade
+    // Terrain & Hydrological Components (Phase 1 & 3)
+    WATER: 1 << 17,               // 131072 - Impassable aquatic cell
+    WATER_SHALLOW: 1 << 18,       // 262144 - Wading water / ford (passable with penalty)
+    TERRAIN_CLIFF: 1 << 19,       // 524288 - Impassable vertical cliff face
+    STRUCTURE_BRIDGE: 1 << 20,    // 1048576 - Engineered river crossing deck
+    TERRAIN_RAMP: 1 << 21,        // 2097152 - Ramp / stone steps connecting elevation tiers
+    CHASM: 1 << 22,               // 4194304 - Impassable bottomless fissure/canyon void
+    TERRAIN_FLORA: 1 << 23        // 8388608 - Riparian reeds/flora
 });
 
 /**
@@ -73,7 +81,22 @@ const CellFlagAliases = Object.freeze({
     "fixture": CellFlags.STRUCTURE_FIXTURE,
     "StructurePath": CellFlags.STRUCTURE_PATH,
     "structure_path": CellFlags.STRUCTURE_PATH,
-    "path": CellFlags.STRUCTURE_PATH
+    "path": CellFlags.STRUCTURE_PATH,
+    "WaterDecoration": CellFlags.WATER,
+    "water": CellFlags.WATER,
+    "WaterShallowDecoration": CellFlags.WATER_SHALLOW,
+    "water_shallow": CellFlags.WATER_SHALLOW,
+    "CliffDecoration": CellFlags.TERRAIN_CLIFF,
+    "cliff": CellFlags.TERRAIN_CLIFF,
+    "StructureBridge": CellFlags.STRUCTURE_BRIDGE,
+    "bridge": CellFlags.STRUCTURE_BRIDGE,
+    "TerrainRamp": CellFlags.TERRAIN_RAMP,
+    "terrain_ramp": CellFlags.TERRAIN_RAMP,
+    "ramp": CellFlags.TERRAIN_RAMP,
+    "Chasm": CellFlags.CHASM,
+    "chasm": CellFlags.CHASM,
+    "TerrainFlora": CellFlags.TERRAIN_FLORA,
+    "flora": CellFlags.TERRAIN_FLORA
 });
 
 // Expose globally for browser console and other modules
@@ -103,6 +126,7 @@ class cell_meta {
     my_seed_ref = 0;
     my_step_option = [];
     my_neighbours = [];
+    elevation = 1;
     cell = this; // Self-reference shim for legacy wrapper code
 
     constructor(element = null, my_x = 0, my_y = 0, my_cell_ref = 0, initialFlags = CellFlags.NONE) {
@@ -112,6 +136,7 @@ class cell_meta {
         this.my_cell_ref = my_cell_ref;
         this.my_shortest_path = Number.MAX_SAFE_INTEGER;
         this.flags = initialFlags;
+        this.elevation = 1;
         this.cell = this;
     }
 
@@ -150,7 +175,9 @@ class cell_meta {
     }
 
     isBlockedType() {
-        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE)) !== 0;
+        if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP)) return false;
+        if (this.flags & CellFlags.WATER_SHALLOW) return false;
+        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE | CellFlags.WATER | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM)) !== 0;
     }
 
     // --- Compatibility Methods ---
@@ -205,6 +232,7 @@ class cell_meta {
         var clone = new cell_meta(this.cell_element, this.my_x, this.my_y, this.my_cell_ref, this.flags);
         clone.my_seed = this.my_seed;
         clone.my_seed_ref = this.my_seed_ref;
+        clone.elevation = this.elevation;
         clone.my_step_option = this.my_step_option ? [...this.my_step_option] : [];
         clone.my_neighbours = this.my_neighbours ? [...this.my_neighbours] : [];
         clone.my_north = this.my_north;
@@ -242,6 +270,22 @@ class cell_meta {
         }
         if (this.flags & CellFlags.STRUCTURE_FIXTURE) classes.push("structure_fixture");
         if (this.flags & CellFlags.STRUCTURE_BARRICADE) classes.push("structure_barricade");
+        if (this.flags & CellFlags.STRUCTURE_BRIDGE) classes.push("structure_bridge");
+        if (this.flags & CellFlags.TERRAIN_RAMP) classes.push("terrain_ramp");
+        if (this.flags & CellFlags.CHASM) classes.push("chasm");
+        if (this.flags & CellFlags.TERRAIN_FLORA) classes.push("flora");
+        if (this.elevation !== undefined && this.elevation !== 1) {
+            classes.push(`elev_${this.elevation}`);
+        }
+        // Hydrology & Terrain CSS classes
+        if (this.flags & CellFlags.WATER) {
+            if (this.flags & CellFlags.WATER_SHALLOW) {
+                classes.push("water_shallow");
+            } else {
+                classes.push("water");
+            }
+        }
+        if (this.flags & CellFlags.TERRAIN_CLIFF) classes.push("cliff");
 
         if (Array.isArray(input)) {
             for (var i = 0; i < input.length; i++) {
@@ -291,7 +335,18 @@ class cell_meta {
 
         const canStepInto = (c) => {
             if (!c) return false;
-            if (!c.isBlockedType()) return true;
+            if (!c.isBlockedType()) {
+                const fromElev = this.elevation !== undefined ? this.elevation : 1;
+                const toElev = c.elevation !== undefined ? c.elevation : 1;
+                const delta = Math.abs(fromElev - toElev);
+                if (delta > 0) {
+                    if (delta > 1) return false; // Sheer cliff
+                    const hasRamp = this.hasFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE) ||
+                                    c.hasFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE);
+                    if (!hasRamp) return false;
+                }
+                return true;
+            }
             return c.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR);
         };
 

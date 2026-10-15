@@ -319,6 +319,224 @@ const StructureLibrary = {
     }),
 
     /**
+     * 4x3 Horizontal Timber Bridge: Spans east-west river channels with wooden planks and side rails.
+     */
+    TimberBridgeH: new StructureBlueprint({
+        id: "timber_bridge_h",
+        name: "Timber Bridge (Horizontal)",
+        category: "infrastructure",
+        width: 4,
+        height: 3,
+        origin: { x: 2, y: 1 },
+        tags: ["bridge", "infrastructure", "water"],
+        layers: {
+            floor: [
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],
+                [0, 0, 0, 0]
+            ],
+            walls: [
+                ["W", "W", "W", "W"], // Upper guide rail
+                ["P", "P", "P", "P"], // Passable bridge deck
+                ["W", "W", "W", "W"]  // Lower guide rail
+            ]
+        }
+    }),
+
+    /**
+     * 3x4 Vertical Timber Bridge: Spans north-south river channels with wooden planks and side rails.
+     */
+    TimberBridgeV: new StructureBlueprint({
+        id: "timber_bridge_v",
+        name: "Timber Bridge (Vertical)",
+        category: "infrastructure",
+        width: 3,
+        height: 4,
+        origin: { x: 1, y: 2 },
+        tags: ["bridge", "infrastructure", "water"],
+        layers: {
+            floor: [
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0]
+            ],
+            walls: [
+                ["W", "P", "W"], // Left rail, deck, right rail
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"]
+            ]
+        }
+    }),
+
+    /**
+     * 4x3 Horizontal Stone Arch Bridge: Fortified masonry span across east-west river channels.
+     */
+    StoneArchBridgeH: new StructureBlueprint({
+        id: "stone_arch_bridge_h",
+        name: "Stone Arch Bridge (Horizontal)",
+        category: "infrastructure",
+        width: 4,
+        height: 3,
+        origin: { x: 2, y: 1 },
+        tags: ["bridge", "stone", "infrastructure", "water"],
+        layers: {
+            floor: [
+                [0, 0, 0, 0],
+                [1, 1, 1, 1],
+                [0, 0, 0, 0]
+            ],
+            walls: [
+                ["W", "W", "W", "W"], // Heavy stone parapet
+                ["P", "P", "P", "P"], // Passable paved deck
+                ["W", "W", "W", "W"]  // Heavy stone parapet
+            ]
+        }
+    }),
+
+    /**
+     * 3x4 Vertical Stone Arch Bridge: Fortified masonry span across north-south river channels.
+     */
+    StoneArchBridgeV: new StructureBlueprint({
+        id: "stone_arch_bridge_v",
+        name: "Stone Arch Bridge (Vertical)",
+        category: "infrastructure",
+        width: 3,
+        height: 4,
+        origin: { x: 1, y: 2 },
+        tags: ["bridge", "stone", "infrastructure", "water"],
+        layers: {
+            floor: [
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0]
+            ],
+            walls: [
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"]
+            ]
+        }
+    }),
+
+    /**
+     * 5x3 Horizontal Suspension Rope Bridge: Spans wide rocky gorges and chasms.
+     */
+    SuspensionBridgeH: new StructureBlueprint({
+        id: "suspension_bridge_h",
+        name: "Suspension Rope Bridge (Horizontal)",
+        category: "infrastructure",
+        width: 5,
+        height: 3,
+        origin: { x: 2, y: 1 },
+        tags: ["bridge", "suspension", "chasm", "infrastructure"],
+        layers: {
+            floor: [
+                [0, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0]
+            ],
+            walls: [
+                ["W", "W", "W", "W", "W"], // Tension guide rope
+                ["P", "P", "P", "P", "P"], // Passable wooden plank walkway
+                ["W", "W", "W", "W", "W"]  // Tension guide rope
+            ]
+        }
+    }),
+
+    /**
+     * 3x5 Vertical Suspension Rope Bridge: Spans deep vertical fissures and chasms.
+     */
+    SuspensionBridgeV: new StructureBlueprint({
+        id: "suspension_bridge_v",
+        name: "Suspension Rope Bridge (Vertical)",
+        category: "infrastructure",
+        width: 3,
+        height: 5,
+        origin: { x: 1, y: 2 },
+        tags: ["bridge", "suspension", "chasm", "infrastructure"],
+        layers: {
+            floor: [
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0],
+                [0, 1, 0]
+            ],
+            walls: [
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"],
+                ["W", "P", "W"]
+            ]
+        }
+    }),
+
+    /**
+     * 4x4 Riverside Watermill: Millhouse with grinding hearth and external paddlewheel.
+     */
+    Watermill: new StructureBlueprint({
+        id: "watermill",
+        name: "Riverside Watermill",
+        category: "settlement",
+        width: 4,
+        height: 4,
+        origin: { x: 2, y: 2 },
+        tags: ["hydrology", "settlement", "production"],
+        layers: {
+            floor: [
+                [1, 1, 1, 0],
+                [1, 1, 1, 1],
+                [1, 1, 1, 1],
+                [0, 1, 0, 0]
+            ],
+            walls: [
+                ["W", "W", "W",  0 ],
+                ["W", "F",  0 , "W"], // F = Grist millstone; right wall = waterwheel hub
+                ["W",  0 ,  0 , "W"],
+                [ 0 , "D",  0 ,  0 ]  // D = South entryway facing inland
+            ],
+            roof: [
+                [1, 1, 1, 0],
+                [1, 1, 1, 0],
+                [1, 1, 1, 0],
+                [0, 0, 0, 0]
+            ]
+        }
+    }),
+
+    /**
+     * 3x4 Lakeside Fishing Pier: Timber jetty extending over water with mooring posts.
+     */
+    FishingPier: new StructureBlueprint({
+        id: "fishing_pier",
+        name: "Lakeside Fishing Pier",
+        category: "infrastructure",
+        width: 3,
+        height: 4,
+        origin: { x: 1, y: 1 },
+        tags: ["hydrology", "infrastructure", "fishing"],
+        layers: {
+            floor: [
+                [0, 1, 0],
+                [1, 1, 1],
+                [1, 1, 1],
+                [0, 1, 0]
+            ],
+            walls: [
+                [ 0 , "P",  0 ], // P = Shore approach plank
+                ["F", "P", "F"], // F = Mooring posts
+                [ 0 , "P",  0 ],
+                ["F", "P", "F"]  // Pier end
+            ]
+        }
+    }),
+
+    /**
      * Retrieves a fresh clone of a blueprint by ID.
      * @param {string} id 
      * @returns {StructureBlueprint|null}
