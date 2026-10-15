@@ -1,8 +1,9 @@
-﻿class frame_meta {
+class frame_meta {
     frame_element;
     tiles_layer;
     player_layer;
     player_avatar;
+    player_rotator;
     frame_size_width = 0;
     frame_size_height = 0;
     cell_size = 20;
@@ -49,15 +50,7 @@
         this.player_layer.setAttribute("id", "player_layer");
         this.frame_element.appendChild(this.player_layer);
 
-        this.player_avatar = create_svg_element("rect");
-        this.player_avatar.setAttribute("id", "player_avatar");
-        this.player_avatar.setAttribute("x", (this.grid_mid_x * this.cell_size) + "px");
-        this.player_avatar.setAttribute("y", (this.grid_mid_y * this.cell_size) + "px");
-        this.player_avatar.setAttribute("width", this.cell_size + "px");
-        this.player_avatar.setAttribute("height", this.cell_size + "px");
-        this.player_avatar.setAttribute("class", "cell agent");
-        this.player_avatar.style.pointerEvents = "none";
-        this.player_layer.appendChild(this.player_avatar);
+        this.buildPlayerAvatar();
 
         this.rect_elements = new Array();
         this.all_cells = new Array();
@@ -90,6 +83,59 @@
         }
 
         this.updateGrid(i_agent, interactive);
+    }
+
+    buildPlayerAvatar() {
+        var centerX = (this.grid_mid_x + 0.5) * this.cell_size;
+        var centerY = (this.grid_mid_y + 0.5) * this.cell_size;
+
+        this.player_avatar = create_svg_element("g");
+        this.player_avatar.setAttribute("id", "player_avatar");
+        this.player_avatar.setAttribute("class", "player_avatar idle");
+        this.player_avatar.setAttribute("transform", `translate(${centerX}, ${centerY})`);
+        this.player_avatar.style.pointerEvents = "none";
+
+        this.player_rotator = create_svg_element("g");
+        this.player_rotator.setAttribute("id", "player_rotator");
+
+        // Outer state ring / halo
+        var ring = create_svg_element("circle");
+        ring.setAttribute("class", "player_ring");
+        ring.setAttribute("cx", "0");
+        ring.setAttribute("cy", "0");
+        ring.setAttribute("r", "8.5");
+        this.player_rotator.appendChild(ring);
+
+        // Main body
+        var body = create_svg_element("circle");
+        body.setAttribute("class", "player_body");
+        body.setAttribute("cx", "0");
+        body.setAttribute("cy", "0");
+        body.setAttribute("r", "6.5");
+        this.player_rotator.appendChild(body);
+
+        // Directional pointer / visor facing East (+x, 0 deg)
+        var visor = create_svg_element("path");
+        visor.setAttribute("class", "player_visor");
+        visor.setAttribute("d", "M 1 -4.5 L 8.5 0 L 1 4.5 L 3 0 Z");
+        this.player_rotator.appendChild(visor);
+
+        // Center core
+        var core = create_svg_element("circle");
+        core.setAttribute("class", "player_core");
+        core.setAttribute("cx", "0");
+        core.setAttribute("cy", "0");
+        core.setAttribute("r", "2");
+        this.player_rotator.appendChild(core);
+
+        this.player_avatar.appendChild(this.player_rotator);
+        this.player_layer.appendChild(this.player_avatar);
+    }
+
+    setPlayerRotation(deg) {
+        if (this.player_rotator) {
+            this.player_rotator.style.transform = `rotate(${deg}deg)`;
+        }
     }
 
     setViewportShift(shiftX, shiftY) {
@@ -164,16 +210,20 @@
 
         // Update player avatar appearance and position
         if (this.player_avatar) {
-            var avatarClass = "cell agent";
+            var avatarClass = "player_avatar";
             if (!this.interactive) {
                 avatarClass += " walking";
+            } else {
+                avatarClass += " idle";
             }
             if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
                 avatarClass += " thinking";
             }
             this.player_avatar.setAttribute("class", avatarClass);
-            this.player_avatar.setAttribute("x", (this.grid_mid_x * this.cell_size) + "px");
-            this.player_avatar.setAttribute("y", (this.grid_mid_y * this.cell_size) + "px");
+
+            var centerX = (this.grid_mid_x + 0.5) * this.cell_size;
+            var centerY = (this.grid_mid_y + 0.5) * this.cell_size;
+            this.player_avatar.setAttribute("transform", `translate(${centerX}, ${centerY})`);
         }
 
         i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];

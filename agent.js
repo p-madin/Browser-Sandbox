@@ -1,4 +1,4 @@
-﻿class agent_meta {
+class agent_meta {
     x = "unset";
     y = "unset";
     self;
@@ -6,9 +6,19 @@
     agentCellOccupied;
     step_duration = 100;
     activeAnimation = null;
+    heading = 0; // Heading in degrees (0 = East)
 
     constructor() {
         self = this;
+    }
+
+    setHeading(targetDeg) {
+        // Shortest-arc angle unwrap so the avatar turns via the minimum rotation angle
+        var diff = (targetDeg - (this.heading % 360) + 540) % 360 - 180;
+        this.heading += diff;
+        if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof globalGridObject.setPlayerRotation === 'function') {
+            globalGridObject.setPlayerRotation(this.heading);
+        }
     }
 
     requestPathFinder() {
@@ -65,6 +75,11 @@
         var dx = to_meta.my_x - from_meta.my_x;
         var dy = to_meta.my_y - from_meta.my_y;
         var isDiagonal = (dx !== 0 && dy !== 0);
+
+        if (dx !== 0 || dy !== 0) {
+            var targetHeading = Math.atan2(dy, dx) * (180 / Math.PI);
+            self.setHeading(targetHeading);
+        }
 
         var duration = isDiagonal ? self.step_duration * 1.414 : self.step_duration;
         var startTime = null;

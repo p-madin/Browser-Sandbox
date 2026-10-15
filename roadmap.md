@@ -1,4 +1,4 @@
-﻿# Project Roadmap: Grid Engine
+# Project Roadmap: Grid Engine
 
 This document outlines the strategic engineering roadmap for Grid Engine, detailing current architectural bottlenecks, prioritized development phases, technical specifications, and recommended future expansions.
 
@@ -6,18 +6,18 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
 
 ## Roadmap Overview & Progress Matrix
 
-| Phase | Milestone | Priority | Estimated Complexity | Target Release |
+| Phase | Milestone | Priority | Status | Target Release |
 | :--- | :--- | :---: | :---: | :---: |
-| **Phase 1** | High-Performance Viewport & DOM Retention | `P0 - Critical` | Medium | v3.1 |
-| **Phase 2** | Smooth Per-Step Movement & Interpolated `walkPath()` | `P0 - Critical` | Medium | v3.1 |
-| **Phase 3** | Player SVG Asset & Directional Rotation | `P1 - High` | Low | v3.2 |
-| **Phase 4** | Automated Pathfinder Benchmarking Harness | `P1 - High` | Medium | v3.2 |
-| **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | Medium | v3.3 |
-| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | Medium | v3.3 |
-| **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | High | v3.4 |
-| **Phase 8** | Decorator Modernization: Component / Bitmask State Model | `P2 - Medium` | Medium | v3.4 |
-| **Phase 9** | Dynamic Fog of War & Line-of-Sight Visibility | `P3 - Low` | Medium | v3.5 |
-| **Phase 10** | Web Audio SFX & Interactive Particle FX | `P3 - Low` | Low | v3.5 |
+| **Phase 1** | High-Performance Viewport & DOM Retention | `P0 - Critical` | ✅ Completed | v3.1 |
+| **Phase 2** | Smooth Per-Step Movement & Interpolated `walkPath()` | `P0 - Critical` | ✅ Completed | v3.1 |
+| **Phase 3** | Player SVG Asset & Directional Rotation | `P1 - High` | ✅ Completed | v3.2 |
+| **Phase 4** | Automated Pathfinder Benchmarking Harness | `P1 - High` | 🟡 Next | v3.2 |
+| **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | ⏳ Pending | v3.3 |
+| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | ⏳ Pending | v3.3 |
+| **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | ⏳ Pending | v3.4 |
+| **Phase 8** | Decorator Modernization: Component / Bitmask State Model | `P2 - Medium` | ⏳ Pending | v3.4 |
+| **Phase 9** | Dynamic Fog of War & Line-of-Sight Visibility | `P3 - Low` | ⏳ Pending | v3.5 |
+| **Phase 10** | Web Audio SFX & Interactive Particle FX | `P3 - Low` | ⏳ Pending | v3.5 |
 
 ---
 
