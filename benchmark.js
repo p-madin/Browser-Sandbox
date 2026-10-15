@@ -133,11 +133,16 @@ class PathfinderBenchmark {
         this.isRunning = true;
         var comparison = [];
 
-        var total = this.testBattery.length * 2;
+        var total = this.testBattery.length * 3;
         var current = 0;
 
         for (var i = 0; i < this.testBattery.length; i++) {
             var testDef = this.testBattery[i];
+
+            current++;
+            if (onProgress) onProgress({ current, total, testName: `${testDef.name} (A*)` });
+            await new Promise(r => setTimeout(r, 10));
+            var astarResult = this.runSingleTest(testDef, 'astar', iterations);
 
             current++;
             if (onProgress) onProgress({ current, total, testName: `${testDef.name} (GPT)` });
@@ -149,25 +154,28 @@ class PathfinderBenchmark {
             await new Promise(r => setTimeout(r, 10));
             var legacyResult = this.runSingleTest(testDef, 'legacy', iterations);
 
-            var speedup = legacyResult.avgTimeMs > 0 && gptResult.avgTimeMs > 0
-                ? (legacyResult.avgTimeMs / gptResult.avgTimeMs).toFixed(2) + "x"
-                : "N/A";
-            var nodeReduction = legacyResult.complexity > 0
-                ? (((legacyResult.complexity - gptResult.complexity) / legacyResult.complexity) * 100).toFixed(1) + "%"
+            var astarSpeedup = gptResult.avgTimeMs > 0 && astarResult.avgTimeMs > 0
+                ? (gptResult.avgTimeMs / Math.max(0.01, astarResult.avgTimeMs)).toFixed(1) + "x"
+                : "1.0x";
+            var nodesSaved = gptResult.complexity > 0
+                ? (((gptResult.complexity - astarResult.complexity) / gptResult.complexity) * 100).toFixed(1) + "%"
                 : "0%";
 
             comparison.push({
                 test: testDef.name,
                 category: testDef.category,
-                distance: gptResult.euclidean,
+                distance: astarResult.euclidean,
+                astarTime: astarResult.avgTimeMs,
                 gptTime: gptResult.avgTimeMs,
                 legacyTime: legacyResult.avgTimeMs,
-                speedup: speedup,
+                astarComplexity: astarResult.complexity,
                 gptComplexity: gptResult.complexity,
                 legacyComplexity: legacyResult.complexity,
-                nodeReduction: nodeReduction,
-                pathLength: gptResult.pathLength,
-                status: gptResult.status
+                astarSpeedup: astarSpeedup,
+                nodesSaved: nodesSaved,
+                pathLength: astarResult.pathLength,
+                status: astarResult.status,
+                bestPath: astarResult.bestPath
             });
         }
 
@@ -183,12 +191,12 @@ class PathfinderBenchmark {
         lines.push("");
 
         if (mode === 'compare' && this.lastComparison) {
-            lines.push("## Head-to-Head Algorithm Comparison: GPT Backtracking vs. Legacy DFS");
+            lines.push("## 3-Way Comparative Benchmark: A* Engine vs. GPT DFS vs. Legacy DFS");
             lines.push("");
-            lines.push("| Test Case | Category | Euclidean | GPT Time (ms) | Legacy Time (ms) | Speedup | GPT Nodes | Legacy Nodes | Complexity Delta | Status |");
-            lines.push("| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |");
+            lines.push("| Test Case | Category | Distance | A* Time | GPT Time | Legacy Time | A* Nodes | GPT Nodes | A* Speedup vs GPT | Nodes Saved | Status |");
+            lines.push("| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |");
             for (var c of this.lastComparison) {
-                lines.push(`| **${c.test}** | ${c.category} | ${c.distance} | ${c.gptTime}ms | ${c.legacyTime}ms | **${c.speedup}** | ${c.gptComplexity.toLocaleString()} | ${c.legacyComplexity.toLocaleString()} | ${c.nodeReduction} | ${c.status} |`);
+                lines.push(`| **${c.test}** | ${c.category} | ${c.distance} | **${c.astarTime}ms** | ${c.gptTime}ms | ${c.legacyTime}ms | **${c.astarComplexity.toLocaleString()}** | ${c.gptComplexity.toLocaleString()} | **${c.astarSpeedup}** | **${c.nodesSaved}** | ${c.status} |`);
             }
         } else {
             lines.push("## Benchmark Suite Results");
@@ -376,30 +384,42 @@ class BenchmarkUIController {
         if (thead) {
             thead.innerHTML = `
                 <th>Test Case</th>
-                <th>Distance</th>
+                <th>Dist</th>
+                <th>A* Time</th>
                 <th>GPT Time</th>
-                <th>Legacy Time</th>
-                <th>Speedup</th>
-                <th>Complexity Delta</th>
+                <th>A* Nodes</th>
+                <th>GPT Nodes</th>
+                <th>A* Speedup</th>
+                <th>Saved</th>
                 <th>Status</th>
             `;
         }
 
         comparison.forEach((c) => {
             var tr = document.createElement("tr");
-            tr.className = "benchmark_row";
+            tr.className = "benchmark_row clickable";
             tr.innerHTML = `
                 <td>
                     <strong>${c.test}</strong>
                     <div class="subtext">${c.category}</div>
                 </td>
                 <td>${c.distance}</td>
-                <td><span class="mono highlight">${c.gptTime}ms</span></td>
-                <td><span class="mono">${c.legacyTime}ms</span></td>
-                <td><span class="badge speedup">${c.speedup}</span></td>
-                <td><span class="mono text-emerald">${c.nodeReduction}</span></td>
+                <td><span class="mono text-emerald" style="font-weight: 700;">${c.astarTime}ms</span></td>
+                <td><span class="mono">${c.gptTime}ms</span></td>
+                <td><span class="mono text-emerald" style="font-weight: 700;">${c.astarComplexity.toLocaleString()}</span></td>
+                <td><span class="mono">${c.gptComplexity.toLocaleString()}</span></td>
+                <td><span class="badge speedup">${c.astarSpeedup}</span></td>
+                <td><span class="mono text-emerald">${c.nodesSaved}</span></td>
                 <td><span class="badge success">${c.status}</span></td>
             `;
+
+            if (c.bestPath && typeof window.highlightPath === 'function') {
+                tr.addEventListener("click", () => {
+                    if (typeof window.clearGridPaths === 'function') window.clearGridPaths();
+                    window.highlightPath(c.bestPath);
+                });
+            }
+
             this.tableBody.appendChild(tr);
         });
     }

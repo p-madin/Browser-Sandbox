@@ -13,8 +13,8 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
 | **Phase 3** | Player SVG Asset & Directional Rotation | `P1 - High` | ✅ Completed | v3.2 |
 | **Phase 4** | Automated Pathfinder Benchmarking Harness | `P1 - High` | ✅ Completed | v3.2 |
 | **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | ✅ Completed | v3.3 |
-| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | 🟡 Next | v3.3 |
-| **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | ⏳ Pending | v3.4 |
+| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | ✅ Completed | v3.3 |
+| **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | 🟡 Next | v3.4 |
 | **Phase 8** | Decorator Modernization: Component / Bitmask State Model | `P2 - Medium` | ⏳ Pending | v3.4 |
 | **Phase 9** | Dynamic Fog of War & Line-of-Sight Visibility | `P3 - Low` | ⏳ Pending | v3.5 |
 | **Phase 10** | Web Audio SFX & Interactive Particle FX | `P3 - Low` | ⏳ Pending | v3.5 |
@@ -131,6 +131,7 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
   - Implement A* using an admissible octile distance heuristic:
     $$h(\Delta x, \Delta y) = (\sqrt{2} - 1) \min(|\Delta x|, |\Delta y|) + \max(|\Delta x|, |\Delta y|)$$
   - Utilize a binary min-heap for the open set priority queue.
+  - Multi-Parent Shortest-Path DAG: Discovers and presents all alternative routes sharing the exact same minimum step count in the options disclosure panel.
   - Guarantees $O(E \log V)$ optimal routing in < 2ms without depth cutoffs.
 
 ### Phase 7: Real-Time Game Loop & Autonomous NPC AI (`tick()`)

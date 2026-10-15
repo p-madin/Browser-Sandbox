@@ -247,14 +247,281 @@ class LegacyDfsStrategy extends IPathfinderStrategy {
 }
 
 /**
+ * Priority Queue Binary Min-Heap for A*
+ */
+class BinaryHeap {
+    constructor() {
+        this.content = [];
+    }
+
+    push(element, priority) {
+        this.content.push({ element, priority });
+        this.bubbleUp(this.content.length - 1);
+    }
+
+    pop() {
+        if (this.content.length === 0) return null;
+        const result = this.content[0];
+        const end = this.content.pop();
+        if (this.content.length > 0) {
+            this.content[0] = end;
+            this.sinkDown(0);
+        }
+        return result.element;
+    }
+
+    peekPriority() {
+        return this.content.length > 0 ? this.content[0].priority : Infinity;
+    }
+
+    isEmpty() {
+        return this.content.length === 0;
+    }
+
+    size() {
+        return this.content.length;
+    }
+
+    bubbleUp(n) {
+        const element = this.content[n];
+        while (n > 0) {
+            const parentN = Math.floor((n + 1) / 2) - 1;
+            const parent = this.content[parentN];
+            if (element.priority >= parent.priority) break;
+            this.content[parentN] = element;
+            this.content[n] = parent;
+            n = parentN;
+        }
+    }
+
+    sinkDown(n) {
+        const length = this.content.length;
+        const element = this.content[n];
+        while (true) {
+            const child2N = (n + 1) * 2;
+            const child1N = child2N - 1;
+            let swap = null;
+            let child1;
+
+            if (child1N < length) {
+                child1 = this.content[child1N];
+                if (child1.priority < element.priority) {
+                    swap = child1N;
+                }
+            }
+            if (child2N < length) {
+                const child2 = this.content[child2N];
+                if (child2.priority < (swap === null ? element.priority : child1.priority)) {
+                    swap = child2N;
+                }
+            }
+            if (swap === null) break;
+            this.content[n] = this.content[swap];
+            this.content[swap] = element;
+            n = swap;
+        }
+    }
+}
+
+/**
+ * Production Strategy: A* (A-Star) Engine with All-Shortest-Paths DAG Discovery
+ * Discovers ALL alternative routes sharing the exact same minimum step count / cost.
+ */
+class AStarStrategy extends IPathfinderStrategy {
+    octileDistance(dx, dy) {
+        const min = Math.min(dx, dy);
+        const max = Math.max(dx, dy);
+        return (0.41421356237 * min + max);
+    }
+
+    findPath(startCell, targetCell, mapObject, options = {}) {
+        const startMeta = startCell.getCellMeta();
+        const targetMeta = targetCell.getCellMeta();
+        const maxPaths = options.maxPaths || 25; // Maximum equal-shortest routes to collect
+        const EPSILON = 0.001;
+
+        if (startMeta.my_cell_ref === targetMeta.my_cell_ref) {
+            return new PathResult({
+                success: true,
+                bestPath: [],
+                pathLength: 0,
+                bestOptions: [[]],
+                uniqueOptions: [[]],
+                complexity: 0
+            });
+        }
+
+        const openHeap = new BinaryHeap();
+        const closedSet = new Set();
+        const gScores = new Map();
+        const cameFrom = new Map(); // Multi-parent DAG: cellRef -> Array<{ fromCell, toCell }>
+
+        let complexity = 0;
+        const maxComplexity = options.maxComplexity || 500000;
+
+        const startRef = startMeta.my_cell_ref;
+        const targetRef = targetMeta.my_cell_ref;
+
+        let minTargetG = Infinity;
+
+        gScores.set(startRef, 0);
+        const initialH = this.octileDistance(
+            Math.abs(targetMeta.my_x - startMeta.my_x),
+            Math.abs(targetMeta.my_y - startMeta.my_y)
+        );
+        openHeap.push(startCell, initialH);
+
+        while (!openHeap.isEmpty()) {
+            complexity++;
+            if (complexity > maxComplexity) {
+                break;
+            }
+
+            // If we have reached target and remaining frontier cannot equal or beat minTargetG, stop
+            if (minTargetG < Infinity && openHeap.peekPriority() > minTargetG + EPSILON) {
+                break;
+            }
+
+            const currentCell = openHeap.pop();
+            const currentMeta = currentCell.getCellMeta();
+            const currentRef = currentMeta.my_cell_ref;
+
+            if (closedSet.has(currentRef)) {
+                continue;
+            }
+            closedSet.add(currentRef);
+
+            const currentG = gScores.get(currentRef) ?? Infinity;
+            const neighbors = currentMeta.my_step_option || [];
+
+            for (let i = 0; i < neighbors.length; i++) {
+                const nextCell = neighbors[i];
+                const nextMeta = nextCell.getCellMeta();
+                const nextRef = nextMeta.my_cell_ref;
+
+                const dx = Math.abs(nextMeta.my_x - currentMeta.my_x);
+                const dy = Math.abs(nextMeta.my_y - currentMeta.my_y);
+                const isDiagonal = (dx !== 0 && dy !== 0);
+                const stepCost = isDiagonal ? 1.41421356237 : 1.0;
+
+                const tentativeG = currentG + stepCost;
+
+                // Check target reach
+                if (nextRef === targetRef) {
+                    if (tentativeG < minTargetG - EPSILON) {
+                        minTargetG = tentativeG;
+                        cameFrom.set(nextRef, [{ fromCell: currentCell, toCell: nextCell }]);
+                    } else if (Math.abs(tentativeG - minTargetG) <= EPSILON) {
+                        const parents = cameFrom.get(nextRef) || [];
+                        if (!parents.some(p => p.fromCell.getCellMeta().my_cell_ref === currentRef)) {
+                            parents.push({ fromCell: currentCell, toCell: nextCell });
+                            cameFrom.set(nextRef, parents);
+                        }
+                    }
+                    continue;
+                }
+
+                if (closedSet.has(nextRef)) continue;
+
+                const prevG = gScores.get(nextRef) ?? Infinity;
+
+                if (tentativeG < prevG - EPSILON) {
+                    gScores.set(nextRef, tentativeG);
+                    cameFrom.set(nextRef, [{ fromCell: currentCell, toCell: nextCell }]);
+                    const h = this.octileDistance(
+                        Math.abs(targetMeta.my_x - nextMeta.my_x),
+                        Math.abs(targetMeta.my_y - nextMeta.my_y)
+                    );
+                    openHeap.push(nextCell, tentativeG + h);
+                } else if (Math.abs(tentativeG - prevG) <= EPSILON) {
+                    const parents = cameFrom.get(nextRef) || [];
+                    if (!parents.some(p => p.fromCell.getCellMeta().my_cell_ref === currentRef)) {
+                        parents.push({ fromCell: currentCell, toCell: nextCell });
+                        cameFrom.set(nextRef, parents);
+                    }
+                }
+            }
+        }
+
+        if (minTargetG === Infinity && !cameFrom.has(targetRef)) {
+            return new PathResult({
+                success: false,
+                complexity: complexity,
+                reason: "No reachable path exists"
+            });
+        }
+
+        // Reconstruct all paths from target back to start via multi-parent DAG
+        const allPaths = [];
+        const visitedInBranch = new Set();
+
+        const backtrack = (cellRef, currentEdges) => {
+            if (allPaths.length >= maxPaths) return;
+
+            if (cellRef === startRef) {
+                // Reverse to get path from start -> target
+                allPaths.push([...currentEdges].reverse());
+                return;
+            }
+
+            const incomingEdges = cameFrom.get(cellRef) || [];
+            for (let i = 0; i < incomingEdges.length; i++) {
+                if (allPaths.length >= maxPaths) break;
+                const edge = incomingEdges[i];
+                const fromRef = edge.fromCell.getCellMeta().my_cell_ref;
+
+                if (visitedInBranch.has(fromRef)) continue; // cycle prevention
+
+                visitedInBranch.add(fromRef);
+                currentEdges.push(new stepOption(edge.fromCell, edge.toCell));
+                backtrack(fromRef, currentEdges);
+                currentEdges.pop();
+                visitedInBranch.delete(fromRef);
+            }
+        };
+
+        backtrack(targetRef, []);
+
+        if (allPaths.length === 0) {
+            return new PathResult({
+                success: false,
+                complexity: complexity,
+                reason: "Path reconstruction failed"
+            });
+        }
+
+        const bestPath = allPaths[0];
+        const pathLength = bestPath.length;
+        const dx = Math.abs(targetMeta.my_x - startMeta.my_x);
+        const dy = Math.abs(targetMeta.my_y - startMeta.my_y);
+        const euclidean = Math.sqrt(dx * dx + dy * dy);
+        const manhattan = dx + dy;
+        const optimality = pathLength > 0 ? Number((pathLength / (euclidean || 1)).toFixed(2)) : 0;
+
+        return new PathResult({
+            success: true,
+            bestPath: bestPath,
+            pathLength: pathLength,
+            bestOptions: allPaths,
+            uniqueOptions: allPaths,
+            complexity: complexity,
+            euclidean: Number(euclidean.toFixed(2)),
+            manhattan: manhattan,
+            optimalityRatio: optimality
+        });
+    }
+}
+
+/**
  * PathfinderService: Core Production Navigation Engine
  */
 class PathfinderService {
     constructor() {
         this.strategies = new Map();
+        this.registerStrategy("astar", new AStarStrategy());
         this.registerStrategy("gpt", new GptBacktrackingDfsStrategy());
         this.registerStrategy("legacy", new LegacyDfsStrategy());
-        this.defaultStrategy = "gpt";
+        this.defaultStrategy = "astar"; // A* is now the default production strategy
     }
 
     registerStrategy(name, strategy) {

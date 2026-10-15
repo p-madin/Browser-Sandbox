@@ -44,12 +44,12 @@ class pathfinder {
         window.to = targetCell.getCellMeta();
         i_agent.destinationCell = targetCell;
 
-        // Execute via decoupled PathfinderService
+        // Execute via decoupled PathfinderService (A* default)
         var result = globalPathfinderService.findPath(
             startCell,
             targetCell,
             typeof globalMapObject !== 'undefined' ? globalMapObject : null,
-            'gpt'
+            'astar'
         );
 
         this.complexity = result.complexity;
@@ -65,7 +65,7 @@ class pathfinder {
         return this.best_options;
     }
 
-    findPathHeadless(fromCell, toCell, algorithm = 'gpt') {
+    findPathHeadless(fromCell, toCell, algorithm = 'astar') {
         window.to = toCell.getCellMeta();
         var result = globalPathfinderService.findPath(
             fromCell,
