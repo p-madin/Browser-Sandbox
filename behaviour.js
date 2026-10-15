@@ -1,4 +1,4 @@
-﻿window.addEventListener("load", init);
+window.addEventListener("load", init);
 // window.addEventListener("resize", function () {
 //     if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
 //         globalGridObject.buildGridPool(agent, globalGridObject.interactive);
@@ -9,14 +9,11 @@ var globalMapObject, globalGridObject, agent, frame_root, my_cache_offset;
 var vector_horizontal = 0;
 var vector_vertical = 0;
 var to;
-const seedgen = () => (Math.random() * 2 ** 32) >>> 0;
-var seed_a = seedgen();
-var seed_b = seedgen();
-var seed_c = seedgen();
-var seed_d = seedgen();
-console.log("var seed_a = " + seed_a + ";" + "var seed_b = " + seed_b + ";" + "var seed_c = " + seed_c + ";" + "var seed_d = " + seed_d + ";");
-var seed_a = 1725833852; var seed_b = 280971695; var seed_c = 935885443; var seed_d = 1412456133;
-var seed_a = 4270865943; var seed_b = 3540297175; var seed_c = 1158276817; var seed_d = 265803571;
+// Root map seeds (SFC32 PRNG seed vector)
+var seed_a = 4270865943;
+var seed_b = 3540297175;
+var seed_c = 1158276817;
+var seed_d = 265803571;
 const getRand = sfc32(seed_a, seed_b, seed_c, seed_d);
 
 function sfc32(a, b, c, d) {

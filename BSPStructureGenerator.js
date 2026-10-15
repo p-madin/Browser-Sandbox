@@ -14,18 +14,18 @@ class BSPNode {
         this.room = null; // { x, y, w, h }
     }
 
-    split(minSize = 4) {
+    split(minSize = 4, rng = Math.random) {
         if (this.left || this.right) return false;
 
         // Choose split axis based on aspect ratio with small random bias
-        let splitHorizontal = Math.random() > 0.5;
+        let splitHorizontal = rng() > 0.5;
         if (this.w > this.h && this.w / this.h >= 1.25) splitHorizontal = false;
         else if (this.h > this.w && this.h / this.w >= 1.25) splitHorizontal = true;
 
         const maxSplit = (splitHorizontal ? this.h : this.w) - minSize;
         if (maxSplit <= minSize) return false;
 
-        const splitAt = Math.floor(Math.random() * (maxSplit - minSize + 1)) + minSize;
+        const splitAt = Math.floor(rng() * (maxSplit - minSize + 1)) + minSize;
 
         if (splitHorizontal) {
             this.left = new BSPNode(this.x, this.y, this.w, splitAt);
@@ -37,18 +37,18 @@ class BSPNode {
         return true;
     }
 
-    createRooms(minRoomSize = 3) {
+    createRooms(minRoomSize = 3, rng = Math.random) {
         if (this.left || this.right) {
-            if (this.left) this.left.createRooms(minRoomSize);
-            if (this.right) this.right.createRooms(minRoomSize);
+            if (this.left) this.left.createRooms(minRoomSize, rng);
+            if (this.right) this.right.createRooms(minRoomSize, rng);
             return;
         }
 
         // Leaf node: carve an interior room with random padding
-        const roomW = Math.max(minRoomSize, Math.floor(Math.random() * (this.w - 3)) + minRoomSize);
-        const roomH = Math.max(minRoomSize, Math.floor(Math.random() * (this.h - 3)) + minRoomSize);
-        const roomX = this.x + Math.floor(Math.random() * (this.w - roomW - 1)) + 1;
-        const roomY = this.y + Math.floor(Math.random() * (this.h - roomH - 1)) + 1;
+        const roomW = Math.max(minRoomSize, Math.floor(rng() * (this.w - 3)) + minRoomSize);
+        const roomH = Math.max(minRoomSize, Math.floor(rng() * (this.h - 3)) + minRoomSize);
+        const roomX = this.x + Math.floor(rng() * (this.w - roomW - 1)) + 1;
+        const roomY = this.y + Math.floor(rng() * (this.h - roomH - 1)) + 1;
 
         this.room = {
             x: roomX,
@@ -79,12 +79,13 @@ class BSPStructureGenerator {
      * @returns {StructureBlueprint}
      */
     static generateDungeon(options = {}) {
+        const rng = (typeof options.rng === 'function') ? options.rng : Math.random;
         const width = options.width || 13;
         const height = options.height || 13;
         const depth = options.depth || 3;
         const minSize = options.minSize || 4;
         const minRoomSize = options.minRoomSize || 2;
-        const id = options.id || "bsp_dungeon_" + Math.random().toString(36).substr(2, 6);
+        const id = options.id || ("bsp_dungeon_" + Math.floor(rng() * 1000000).toString(36));
         const name = options.name || "Ancient Catacombs";
 
         // Initialize 2D matrices
@@ -99,7 +100,7 @@ class BSPStructureGenerator {
             const currentNodes = [...nodes];
             for (const node of currentNodes) {
                 if (!node.left && !node.right) {
-                    if (node.split(minSize)) {
+                    if (node.split(minSize, rng)) {
                         nodes.push(node.left, node.right);
                     }
                 }
@@ -107,7 +108,7 @@ class BSPStructureGenerator {
         }
 
         // 2. Carve Rooms in leaf nodes
-        root.createRooms(minRoomSize);
+        root.createRooms(minRoomSize, rng);
 
         // Gather all carved rooms
         const rooms = [];

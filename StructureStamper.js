@@ -277,8 +277,20 @@ class StructureStamper {
      */
     static stampRandom(map, blueprint, maxAttempts = 50, preferredBiome = null) {
         for (let i = 0; i < maxAttempts; i++) {
-            const rx = Math.floor(Math.random() * (map.max_width - map.min_width - blueprint.width * 2)) + map.min_width + blueprint.width;
-            const ry = Math.floor(Math.random() * (map.max_height - map.min_height - blueprint.height * 2)) + map.min_height + blueprint.height;
+            const minX = map.min_width + blueprint.width;
+            const maxX = map.max_width - blueprint.width * 2;
+            const minY = map.min_height + blueprint.height;
+            const maxY = map.max_height - blueprint.height * 2;
+
+            let rx, ry;
+            if (map && typeof map.getCandidateCoord === 'function') {
+                const coord = map.getCandidateCoord(blueprint.id, i, minX, maxX, minY, maxY);
+                rx = coord.x;
+                ry = coord.y;
+            } else {
+                rx = Math.floor(Math.random() * (maxX - minX)) + minX;
+                ry = Math.floor(Math.random() * (maxY - minY)) + minY;
+            }
 
             if (preferredBiome === "grass") {
                 const cell = map.map_cells[rx] && map.map_cells[rx][ry];

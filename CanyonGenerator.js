@@ -31,7 +31,8 @@ class CanyonGenerator {
 
             const targetAngle = Math.atan2(end.y - curY, end.x - curX);
             // Jagged fracture displacement
-            const jaggedOffset = (Math.random() - 0.5) * 1.2 + Math.sin(steps * 0.35) * 0.5;
+            const canyonRng = (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+            const jaggedOffset = (canyonRng - 0.5) * 1.2 + Math.sin(steps * 0.35) * 0.5;
             const currentAngle = targetAngle + jaggedOffset;
 
             curX += Math.round(Math.cos(currentAngle));

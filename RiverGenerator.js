@@ -72,14 +72,16 @@ class RiverGenerator {
 
             const targetAngle = Math.atan2(end.y - curY, end.x - curX);
             // Meander noise wave
-            const meanderOffset = Math.sin(steps * 0.18) * 0.75 + (Math.random() - 0.5) * 0.4;
+            const riverRng1 = (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+            const meanderOffset = Math.sin(steps * 0.18) * 0.75 + (riverRng1 - 0.5) * 0.4;
             const currentAngle = targetAngle + meanderOffset;
 
             curX += Math.round(Math.cos(currentAngle));
             curY += Math.round(Math.sin(currentAngle));
 
             // Occasionally create shallow wading fords
-            const isShallowFord = (Math.random() < shallowFrequency) && (steps % 15 === 0);
+            const riverRng2 = (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+            const isShallowFord = (riverRng2 < shallowFrequency) && (steps % 15 === 0);
             stepRiverAt(curX, curY, isShallowFord);
         }
 

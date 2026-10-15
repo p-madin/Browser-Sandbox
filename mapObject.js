@@ -10,17 +10,34 @@ class mapObject {
     max_width;
     min_height;
     max_height;
-    constructor(map_width, map_height) {
+    seeds = [];
+    prng = null;
+
+    constructor(map_width, map_height, seeds = null) {
         this.min_width = (map_width / 2) * -1;
         this.max_width = map_width / 2;
         this.min_height = (map_height / 2) * -1;
         this.max_height = map_height / 2;
+
+        // Initialize deterministic root seeds
+        if (seeds && Array.isArray(seeds) && seeds.length >= 4) {
+            this.seeds = [...seeds];
+        } else if (typeof seed_a !== 'undefined' && typeof seed_b !== 'undefined' && typeof seed_c !== 'undefined' && typeof seed_d !== 'undefined') {
+            this.seeds = [seed_a, seed_b, seed_c, seed_d];
+        } else {
+            this.seeds = [4270865943, 3540297175, 1158276817, 265803571];
+        }
+
+        if (typeof sfc32 === 'function') {
+            this.prng = sfc32(this.seeds[0], this.seeds[1], this.seeds[2], this.seeds[3]);
+        }
+
         for (var i = this.min_width; i < this.max_width; i++) {
             for (var j = this.min_height; j < this.max_height; j++) {
                 if (typeof this.rand_cache[i] === 'undefined') {
                     this.rand_cache[i] = new Array();
                 }
-                this.rand_cache[i][j] = getRand() * 100;
+                this.rand_cache[i][j] = this.getRandom() * 100;
             }
         }
         var frame_count = 0;
@@ -118,5 +135,61 @@ class mapObject {
                 this_cell.determineNeighboursPassable(this);
             }
         }
+    }
+
+    /**
+     * Returns a seeded pseudo-random float in [0, 1) tied to the map's root seed.
+     * @returns {number}
+     */
+    getRandom() {
+        if (this.prng) {
+            return this.prng();
+        }
+        if (typeof getRand === 'function') {
+            return getRand();
+        }
+        return Math.random();
+    }
+
+    /**
+     * Computes a 32-bit FNV-1a integer hash from any string or number input.
+     * @param {*} value 
+     * @returns {number}
+     */
+    hashInt(value) {
+        let h = 2166136261 >>> 0;
+        const str = String(value);
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = Math.imul(h, 16777619) >>> 0;
+        }
+        return h;
+    }
+
+    /**
+     * Deterministically calculates candidate placement coordinates for a structure retry attempt based on map seeds.
+     * @param {string} salt Unique structure identifier (e.g. blueprint id or category)
+     * @param {number} attempt Attempt index (0, 1, 2, ...)
+     * @param {number} minX Minimum X bound
+     * @param {number} maxX Maximum X bound
+     * @param {number} minY Minimum Y bound
+     * @param {number} maxY Maximum Y bound
+     * @returns {{x: number, y: number}}
+     */
+    getCandidateCoord(salt, attempt, minX, maxX, minY, maxY) {
+        const rootSeed = (this.seeds && this.seeds[0]) ? this.seeds[0] : 4270865943;
+        // SplitMix32 / Avalanche hash mixing rootSeed, salt, and attempt
+        let h = (rootSeed ^ this.hashInt(salt) ^ Math.imul(attempt + 1, 0x9E3779B9)) >>> 0;
+        h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0;
+        h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+        h = (h ^ (h >>> 16)) >>> 0;
+
+        const spanX = Math.max(1, maxX - minX);
+        const spanY = Math.max(1, maxY - minY);
+
+        const x = minX + (h % spanX);
+        const y = minY + ((h >>> 16) % spanY);
+
+        return { x, y };
     }
 }

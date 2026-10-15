@@ -101,7 +101,8 @@ class WorldStructurePlacer {
             const dy = Math.sign(to.y - curY);
 
             // Step either horizontally, vertically, or diagonally
-            if (curX !== to.x && (curY === to.y || Math.random() > 0.5)) {
+            const rngVal = (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+            if (curX !== to.x && (curY === to.y || rngVal > 0.5)) {
                 curX += dx;
             } else if (curY !== to.y) {
                 curY += dy;
@@ -161,7 +162,9 @@ class WorldStructurePlacer {
             width: 13,
             height: 13,
             depth: 3,
-            name: "Sunken Catacombs"
+            name: "Sunken Catacombs",
+            id: "bsp_dungeon_catacombs",
+            rng: () => (map && typeof map.getRandom === 'function' ? map.getRandom() : Math.random())
         });
 
         // Search for a suitable placement away from player
@@ -194,8 +197,20 @@ class WorldStructurePlacer {
 
         for (const item of outposts) {
             for (let attempt = 0; attempt < 35; attempt++) {
-                const rx = Math.floor(Math.random() * (map.max_width - map.min_width - 16)) + map.min_width + 8;
-                const ry = Math.floor(Math.random() * (map.max_height - map.min_height - 16)) + map.min_height + 8;
+                const minX = map.min_width + 8;
+                const maxX = map.max_width - 8;
+                const minY = map.min_height + 8;
+                const maxY = map.max_height - 8;
+
+                let rx, ry;
+                if (map && typeof map.getCandidateCoord === 'function') {
+                    const coord = map.getCandidateCoord(item.bp.id, attempt, minX, maxX, minY, maxY);
+                    rx = coord.x;
+                    ry = coord.y;
+                } else {
+                    rx = Math.floor(Math.random() * (maxX - minX)) + minX;
+                    ry = Math.floor(Math.random() * (maxY - minY)) + minY;
+                }
 
                 if (!this.hasClearance(placed, rx, ry, minClearance)) continue;
 
