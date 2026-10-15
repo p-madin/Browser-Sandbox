@@ -12,8 +12,8 @@ This document outlines the strategic engineering roadmap for Grid Engine, detail
 | **Phase 2** | Smooth Per-Step Movement & Interpolated `walkPath()` | `P0 - Critical` | ✅ Completed | v3.1 |
 | **Phase 3** | Player SVG Asset & Directional Rotation | `P1 - High` | ✅ Completed | v3.2 |
 | **Phase 4** | Automated Pathfinder Benchmarking Harness | `P1 - High` | ✅ Completed | v3.2 |
-| **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | 🟡 Next | v3.3 |
-| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | ⏳ Pending | v3.3 |
+| **Phase 5** | Pathfinder Decoupling: Production Engine vs. Research Suite | `P1 - High` | ✅ Completed | v3.3 |
+| **Phase 6** | A* (A-Star) Engine & True Shortest-Path Guarantee | `P1 - High` | 🟡 Next | v3.3 |
 | **Phase 7** | Real-Time Game Loop & Autonomous NPC AI (`tick()`) | `P2 - Medium` | ⏳ Pending | v3.4 |
 | **Phase 8** | Decorator Modernization: Component / Bitmask State Model | `P2 - Medium` | ⏳ Pending | v3.4 |
 | **Phase 9** | Dynamic Fog of War & Line-of-Sight Visibility | `P3 - Low` | ⏳ Pending | v3.5 |

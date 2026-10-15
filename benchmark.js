@@ -70,8 +70,7 @@ class PathfinderBenchmark {
         var lastOutcome = null;
 
         for (var iter = 0; iter < iterations; iter++) {
-            var finder = new pathfinder();
-            var outcome = finder.findPathHeadless(fromCell, toCell, algorithm);
+            var outcome = globalPathfinderService.findPath(fromCell, toCell, globalMapObject, algorithm);
             times.push(outcome.executionTimeMs);
             complexities.push(outcome.complexity);
             lastOutcome = outcome;

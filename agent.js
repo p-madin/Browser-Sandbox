@@ -45,7 +45,10 @@ class agent_meta {
             return false;
         }
 
-        globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y] = new SelectedDecoration(globalMapObject.map_cells[to.getCellMeta().my_x][to.getCellMeta().my_y]);
+        var targetCellMeta = this.destinationCell ? this.destinationCell.getCellMeta() : (typeof to !== 'undefined' && to ? to.getCellMeta() : null);
+        if (targetCellMeta && globalMapObject.map_cells[targetCellMeta.my_x] && globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]) {
+            globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y] = new SelectedDecoration(globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]);
+        }
         globalGridObject.updateGrid(this, true);
 
         var best_path = this.pickBestPath(best_options);
@@ -111,13 +114,11 @@ class agent_meta {
 
                 if (isFinal) {
                     self.activeAnimation = null;
-                    if (typeof to !== 'undefined' && to) {
-                        var to_x = to.getCellMeta().my_x;
-                        var to_y = to.getCellMeta().my_y;
-                        if (globalMapObject.map_cells[to_x] && globalMapObject.map_cells[to_x][to_y]) {
-                            globalMapObject.map_cells[to_x][to_y] = globalMapObject.map_cells[to_x][to_y].removeDecoration("SelectedDecoration");
-                        }
+                    var targetCellMeta = self.destinationCell ? self.destinationCell.getCellMeta() : (typeof to !== 'undefined' && to ? to.getCellMeta() : null);
+                    if (targetCellMeta && globalMapObject.map_cells[targetCellMeta.my_x] && globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y]) {
+                        globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y] = globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y].removeDecoration("SelectedDecoration");
                     }
+                    self.destinationCell = null;
                     globalGridObject.updateGrid(self, true);
                     return;
                 }

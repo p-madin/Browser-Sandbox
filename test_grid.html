@@ -1,94 +1,104 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="behaviour.js" type="text/javascript"></script>
-        <script src="mapObject.js" type="text/javascript"></script>
-        <script src="grid.js" type="text/javascript"></script>
-        <script src="agent.js" type="text/javascript"></script>
-        <script src="cell.js" type="text/javascript"></script>
-        <script src="pathfinder.js" type="text/javascript"></script>
-        <script src="stepOption.js" type="text/javascript"></script>
-        <script src="Agent States/cellStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/blockedStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/specialStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/agentStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/thinkingAgentStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/walkingAgentStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/selectedStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/grassStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/treeStateDecoration.js" type="text/javascript"></script>
-        <script src="Agent States/enemyAgentDecoration.js" type="text/javascript"></script>
-        <script src="benchmark.js" type="text/javascript"></script>
-        
-        <link rel="stylesheet" href="styles.css"></link>
-    </head>
-    <body>
-        <div>
-            <svg id="frame" height="100%" width="100%"></svg>
-        </div>
 
-        <!-- Pathfinder Benchmark Dashboard (Phase 4) -->
-        <div id="benchmark_panel" class="benchmark_panel">
-            <div class="benchmark_header">
-                <div class="benchmark_title">
-                    <span class="benchmark_icon">⚡</span>
-                    <strong>Pathfinder Benchmark Harness</strong>
-                </div>
-                <button id="benchmark_toggle_btn" class="benchmark_btn_icon" title="Minimize / Expand">_</button>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="behaviour.js" type="text/javascript"></script>
+    <script src="mapObject.js" type="text/javascript"></script>
+    <script src="grid.js" type="text/javascript"></script>
+    <script src="agent.js" type="text/javascript"></script>
+    <script src="cell.js" type="text/javascript"></script>
+    <script src="stepOption.js" type="text/javascript"></script>
+    <script src="PathOptionsRenderer.js" type="text/javascript"></script>
+    <script src="PathfinderService.js" type="text/javascript"></script>
+    <script src="PathfinderResearchLab.js" type="text/javascript"></script>
+    <script src="pathfinder.js" type="text/javascript"></script>
+    <script src="Agent States/cellStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/blockedStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/specialStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/agentStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/thinkingAgentStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/walkingAgentStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/selectedStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/grassStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/treeStateDecoration.js" type="text/javascript"></script>
+    <script src="Agent States/enemyAgentDecoration.js" type="text/javascript"></script>
+    <script src="benchmark.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" href="styles.css">
+    </link>
+</head>
+
+<body>
+    <div>
+        <svg id="frame" height="100%" width="100%"></svg>
+    </div>
+
+    <!-- Pathfinder Benchmark Dashboard (Phase 4) -->
+    <div id="benchmark_panel" class="benchmark_panel">
+        <div class="benchmark_header">
+            <div class="benchmark_title">
+                <span class="benchmark_icon">⚡</span>
+                <strong>Pathfinder Benchmark Harness</strong>
             </div>
-            <div class="benchmark_body">
-                <div class="benchmark_controls">
-                    <div class="benchmark_control_group">
-                        <label for="benchmark_algo_select">Algorithm</label>
-                        <select id="benchmark_algo_select">
-                            <option value="gpt" selected>GPT Backtracking DFS</option>
-                            <option value="legacy">Legacy Recursive DFS</option>
-                            <option value="compare">⚡ Head-to-Head Comparison</option>
-                        </select>
-                    </div>
-                    <div class="benchmark_control_group">
-                        <label for="benchmark_iter_select">Runs (N)</label>
-                        <select id="benchmark_iter_select">
-                            <option value="1">1 (Fast)</option>
-                            <option value="5" selected>5 (Accurate)</option>
-                            <option value="10">10 (Stress)</option>
-                        </select>
-                    </div>
-                    <div class="benchmark_button_row">
-                        <button id="benchmark_run_btn" class="benchmark_btn primary">▶ Run Suite</button>
-                        <button id="benchmark_copy_btn" class="benchmark_btn">📋 Copy Report</button>
-                        <button id="benchmark_export_btn" class="benchmark_btn">💾 JSON</button>
-                    </div>
+            <button id="benchmark_toggle_btn" class="benchmark_btn_icon" title="Minimize / Expand">_</button>
+        </div>
+        <div class="benchmark_body">
+            <div class="benchmark_controls">
+                <div class="benchmark_control_group">
+                    <label for="benchmark_algo_select">Algorithm</label>
+                    <select id="benchmark_algo_select">
+                        <option value="gpt" selected>GPT Backtracking DFS</option>
+                        <option value="legacy">Legacy Recursive DFS</option>
+                        <option value="compare">⚡ Head-to-Head Comparison</option>
+                    </select>
                 </div>
-
-                <div id="benchmark_status" class="benchmark_status">Ready to benchmark</div>
-                <div id="benchmark_summary_cards" class="benchmark_summary_cards" style="display: none;"></div>
-
-                <div class="benchmark_table_wrapper">
-                    <table id="benchmark_results_table" class="benchmark_table">
-                        <thead>
-                            <tr>
-                                <th>Test Case</th>
-                                <th>Distance</th>
-                                <th>Time</th>
-                                <th>Nodes</th>
-                                <th>Steps</th>
-                                <th>Opt.</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="benchmark_results_body">
-                            <tr><td colspan="7" class="placeholder_row">Click 'Run Suite' to execute standardized battery</td></tr>
-                        </tbody>
-                    </table>
+                <div class="benchmark_control_group">
+                    <label for="benchmark_iter_select">Runs (N)</label>
+                    <select id="benchmark_iter_select">
+                        <option value="1">1 (Fast)</option>
+                        <option value="5" selected>5 (Accurate)</option>
+                        <option value="10">10 (Stress)</option>
+                    </select>
+                </div>
+                <div class="benchmark_button_row">
+                    <button id="benchmark_run_btn" class="benchmark_btn primary">▶ Run Suite</button>
+                    <button id="benchmark_copy_btn" class="benchmark_btn">📋 Copy Report</button>
+                    <button id="benchmark_export_btn" class="benchmark_btn">💾 JSON</button>
                 </div>
             </div>
-        </div>
 
-        <details class='path_options_disclosure' style=''>
-            <summary>Options</summary>
-            <div id='path_options'></div>
-        </details>
-    </body>
+            <div id="benchmark_status" class="benchmark_status">Ready to benchmark</div>
+            <div id="benchmark_summary_cards" class="benchmark_summary_cards" style="display: none;"></div>
+
+            <div class="benchmark_table_wrapper">
+                <table id="benchmark_results_table" class="benchmark_table">
+                    <thead>
+                        <tr>
+                            <th>Test Case</th>
+                            <th>Distance</th>
+                            <th>Time</th>
+                            <th>Nodes</th>
+                            <th>Steps</th>
+                            <th>Opt.</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="benchmark_results_body">
+                        <tr>
+                            <td colspan="7" class="placeholder_row">Click 'Run Suite' to execute standardized battery
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <details class='path_options_disclosure'>
+        <summary>Options</summary>
+        <div id='path_options'></div>
+    </details>
+</body>
+
 </html>
