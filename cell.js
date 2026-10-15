@@ -12,7 +12,14 @@ const CellFlags = Object.freeze({
     SELECTED: 1 << 5,      // 32  - Selected destination beacon
     SPECIAL: 1 << 6,       // 64  - Special interactive tile
     THINKING: 1 << 7,      // 128 - Agent thinking state
-    WALKING: 1 << 8        // 256 - Agent walking state
+    WALKING: 1 << 8,       // 256 - Agent walking state
+    // Structural Components (Phase 1)
+    STRUCTURE_WALL: 1 << 9,     // 512   - Impassable structural wall
+    STRUCTURE_FLOOR: 1 << 10,   // 1024  - Interior floor (wood plank / stone tile)
+    STRUCTURE_DOOR: 1 << 11,    // 2048  - Ingress/egress doorway opening
+    STRUCTURE_ROOF: 1 << 12,    // 4096  - Overhead canopy / roof tile
+    STRUCTURE_FIXTURE: 1 << 13, // 8192  - Internal fixture (chest, bench, hearth)
+    STRUCTURE_PATH: 1 << 14     // 16384 - Exterior gravel / stone pathway
 });
 
 /**
@@ -39,7 +46,25 @@ const CellFlagAliases = Object.freeze({
     "ThinkingAgentDecoration": CellFlags.THINKING,
     "thinking": CellFlags.THINKING,
     "WalkingAgentDecoration": CellFlags.WALKING,
-    "walking": CellFlags.WALKING
+    "walking": CellFlags.WALKING,
+    "StructureWall": CellFlags.STRUCTURE_WALL,
+    "structure_wall": CellFlags.STRUCTURE_WALL,
+    "wall": CellFlags.STRUCTURE_WALL,
+    "StructureFloor": CellFlags.STRUCTURE_FLOOR,
+    "structure_floor": CellFlags.STRUCTURE_FLOOR,
+    "floor": CellFlags.STRUCTURE_FLOOR,
+    "StructureDoor": CellFlags.STRUCTURE_DOOR,
+    "structure_door": CellFlags.STRUCTURE_DOOR,
+    "door": CellFlags.STRUCTURE_DOOR,
+    "StructureRoof": CellFlags.STRUCTURE_ROOF,
+    "structure_roof": CellFlags.STRUCTURE_ROOF,
+    "roof": CellFlags.STRUCTURE_ROOF,
+    "StructureFixture": CellFlags.STRUCTURE_FIXTURE,
+    "structure_fixture": CellFlags.STRUCTURE_FIXTURE,
+    "fixture": CellFlags.STRUCTURE_FIXTURE,
+    "StructurePath": CellFlags.STRUCTURE_PATH,
+    "structure_path": CellFlags.STRUCTURE_PATH,
+    "path": CellFlags.STRUCTURE_PATH
 });
 
 // Expose globally for browser console and other modules
@@ -116,7 +141,7 @@ class cell_meta {
     }
 
     isBlockedType() {
-        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE)) !== 0;
+        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.STRUCTURE_WALL)) !== 0;
     }
 
     // --- Compatibility Methods ---
@@ -158,6 +183,12 @@ class cell_meta {
         if (this.flags & CellFlags.SPECIAL) input.push("SpecialDecoration");
         if (this.flags & CellFlags.THINKING) input.push("ThinkingAgentDecoration");
         if (this.flags & CellFlags.WALKING) input.push("WalkingAgentDecoration");
+        if (this.flags & CellFlags.STRUCTURE_WALL) input.push("StructureWall");
+        if (this.flags & CellFlags.STRUCTURE_FLOOR) input.push("StructureFloor");
+        if (this.flags & CellFlags.STRUCTURE_DOOR) input.push("StructureDoor");
+        if (this.flags & CellFlags.STRUCTURE_ROOF) input.push("StructureRoof");
+        if (this.flags & CellFlags.STRUCTURE_FIXTURE) input.push("StructureFixture");
+        if (this.flags & CellFlags.STRUCTURE_PATH) input.push("StructurePath");
         return input;
     }
 
@@ -191,6 +222,13 @@ class cell_meta {
         if (this.flags & CellFlags.SPECIAL) classes.push("special");
         if (this.flags & CellFlags.THINKING) classes.push("thinking");
         if (this.flags & CellFlags.WALKING) classes.push("walking");
+        // Structural CSS classes
+        if (this.flags & CellFlags.STRUCTURE_FLOOR) classes.push("structure_floor");
+        if (this.flags & CellFlags.STRUCTURE_PATH) classes.push("structure_path");
+        if (this.flags & CellFlags.STRUCTURE_WALL) classes.push("structure_wall");
+        if (this.flags & CellFlags.STRUCTURE_DOOR) classes.push("structure_door");
+        if (this.flags & CellFlags.STRUCTURE_FIXTURE) classes.push("structure_fixture");
+        if (this.flags & CellFlags.STRUCTURE_ROOF) classes.push("structure_roof");
 
         if (Array.isArray(input)) {
             for (var i = 0; i < input.length; i++) {

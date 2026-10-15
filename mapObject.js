@@ -5,6 +5,7 @@ class mapObject {
     all_blocked_cells = new Array();
     all_grass_cells = new Array();
     all_agents = new Array();
+    structures = new Array();
     min_width;
     max_width;
     min_height;
@@ -88,6 +89,10 @@ class mapObject {
                     this.map_cells[cell.my_x][cell.my_y] = cell;
                 }
             }
+        }
+        this.structures = [];
+        if (typeof StructureStamper !== 'undefined' && typeof StructureLibrary !== 'undefined') {
+            StructureStamper.stampStarterSettlement(this);
         }
         for (var i = this.min_width; i < this.max_width; i++) {
             for (var j = this.min_height; j < this.max_height; j++) {
