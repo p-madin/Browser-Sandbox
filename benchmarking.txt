@@ -1,21 +1,15 @@
-gpt n = 50:
-55051 for 63 valid options
-61043 for 68 valid options
-66024 for 71 valid options
-79144 for 61 valid options
-91308 for 61 valid options
+# Pathfinder Benchmark Telemetry Report
+Generated: 2026-10-15T05:26:46.985Z
 
-69562 for 66 valid options
-273972 for 61 valid options
-410420 for 68 valid options
-508107 for 68 valid options
-541970 for 71 valid options
+## Head-to-Head Algorithm Comparison: GPT Backtracking vs. Legacy DFS
 
-non gpt n = 50:
-135334 for 34 valid options
-385016 for 39 valid options
-392317 for 46 valid options
-63482 for 44 valid options
-82545 for 41 valid options
-
-517690 for 45 valid options
+| Test Case | Category | Euclidean | GPT Time (ms) | Legacy Time (ms) | Speedup | GPT Nodes | Legacy Nodes | Complexity Delta | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Micro: Cardinal East** | Micro (1-5) | 3 | 1.8ms | 0.38ms | **0.21x** | 2,677 | 295 | -807.5% | Passed |
+| **Micro: Diagonal SE** | Micro (1-5) | 4.24 | 7.86ms | 0.32ms | **0.04x** | 14,512 | 591 | -2355.5% | Passed |
+| **Short: North-East Clearing** | Short (5-15) | 9.22 | 482.2ms | 409.34ms | **0.85x** | 1,000,038 | 894,188 | -11.8% | Passed |
+| **Short: South-West Obstacle** | Short (5-15) | 10 | 467.26ms | 107.08ms | **0.23x** | 1,000,050 | 259,105 | -286.0% | Passed |
+| **Medium: Multi-Biome East** | Medium (15-35) | 18.68 | 408.7ms | 410.82ms | **1.01x** | 1,000,104 | 1,000,102 | -0.0% | Passed |
+| **Medium: Tree Grove Routing** | Medium (15-35) | 21.26 | 452.88ms | 418.52ms | **0.92x** | 1,000,093 | 1,000,084 | -0.0% | Passed |
+| **Stress: Deep Wall-Skirting** | Stress (35-55+) | 32.56 | 401.04ms | 423.02ms | **1.05x** | 1,000,194 | 1,000,192 | -0.0% | Passed |
+| **Unreachable: Blocked Target** | Unreachable | 0 | 0ms | 0ms | **N/A** | 0 | 0 | 0% | Expected Block |

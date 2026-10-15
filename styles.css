@@ -194,3 +194,297 @@ body>div {
     color: white;
     background-color: rgba(0, 120, 150, 1);
 }
+
+/* Pathfinder Benchmark Harness UI (Phase 4) */
+.benchmark_panel {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: 560px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    display: flex;
+    flex-direction: column;
+    background: rgba(17, 24, 39, 0.94);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2);
+    color: #e5e7eb;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    z-index: 200;
+    overflow: hidden;
+    transition: width 0.2s ease, max-height 0.2s ease;
+}
+
+.benchmark_panel.collapsed {
+    width: auto;
+    max-height: 48px;
+}
+
+.benchmark_panel.collapsed .benchmark_body {
+    display: none;
+}
+
+.benchmark_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(31, 41, 55, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    user-select: none;
+}
+
+.benchmark_title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #f9fafb;
+    font-size: 13px;
+}
+
+.benchmark_icon {
+    font-size: 15px;
+}
+
+.benchmark_btn_icon {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.benchmark_btn_icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.benchmark_body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.benchmark_controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    background: rgba(31, 41, 55, 0.5);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.benchmark_control_group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.benchmark_control_group label {
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.benchmark_control_group select {
+    background: #111827;
+    color: #f3f4f6;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+}
+
+.benchmark_control_group select:focus {
+    border-color: #3b82f6;
+}
+
+.benchmark_button_row {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.benchmark_btn {
+    background: #374151;
+    color: #f3f4f6;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.benchmark_btn:hover {
+    background: #4b5563;
+    color: #ffffff;
+}
+
+.benchmark_btn.primary {
+    background: #2563eb;
+    border-color: #1d4ed8;
+    color: #fff;
+}
+
+.benchmark_btn.primary:hover {
+    background: #1d4ed8;
+}
+
+.benchmark_btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.benchmark_status {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 0 4px;
+}
+
+.benchmark_summary_cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.benchmark_card {
+    background: rgba(31, 41, 55, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.card_val {
+    font-size: 15px;
+    font-weight: 700;
+    color: #38bdf8;
+    font-family: monospace;
+}
+
+.card_lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.benchmark_table_wrapper {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(17, 24, 39, 0.7);
+}
+
+.benchmark_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    text-align: left;
+}
+
+.benchmark_table thead {
+    position: sticky;
+    top: 0;
+    background: #1f2937;
+    z-index: 10;
+}
+
+.benchmark_table th {
+    padding: 8px 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.benchmark_table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.benchmark_row.clickable {
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+
+.benchmark_row.clickable:hover {
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.subtext {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.mono {
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.highlight {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.text-emerald {
+    color: #10b981;
+}
+
+.badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge.neutral {
+    background: rgba(156, 163, 175, 0.2);
+    color: #d1d5db;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.badge.fail {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge.speedup {
+    background: rgba(14, 165, 233, 0.2);
+    color: #38bdf8;
+    border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.placeholder_row {
+    text-align: center;
+    color: #6b7280;
+    padding: 24px 12px;
+}

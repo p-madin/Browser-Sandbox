@@ -1,4 +1,4 @@
-﻿class pathfinder {
+class pathfinder {
     best_size = Number.MAX_SAFE_INTEGER;
     unique_options = new Array();
     best_options = new Array();
@@ -15,6 +15,74 @@
         this.findUniquePath(i_agent);
 
         return this.best_options;
+    }
+
+    findPathHeadless(fromCell, toCell, algorithm = 'gpt') {
+        to = toCell.getCellMeta();
+        if (toCell.isBlockedType()) {
+            return {
+                success: false,
+                reason: "Target cell is blocked",
+                complexity: 0,
+                pathLength: 0,
+                bestPath: null,
+                uniqueCount: 0,
+                bestCount: 0,
+                executionTimeMs: 0,
+                euclidean: 0,
+                manhattan: 0,
+                optimalityRatio: 0
+            };
+        }
+
+        const t0 = performance.now();
+        this.complexity = 0;
+        this.best_size = Number.MAX_SAFE_INTEGER;
+        this.unique_options = new Array();
+        this.best_options = new Array();
+
+        var current_node = fromCell.getCellMeta();
+        var step_options_array = current_node.my_step_option;
+        var sorted_step_options_array = this.sortStepOptions(to, step_options_array);
+
+        for (var i = 0; i < sorted_step_options_array.length; i++) {
+            var stepOptionRepresentation = new stepOption(fromCell, sorted_step_options_array[i].cell);
+            var path = new Array();
+            path.push(stepOptionRepresentation);
+            if (algorithm === 'legacy') {
+                this.findUniquePathRecurse(path, sorted_step_options_array[i].cell, 1);
+            } else {
+                this.findUniquePathRecurseGPT(path, sorted_step_options_array[i].cell, 1);
+            }
+        }
+
+        for (var i = 0; i < this.unique_options.length; i++) {
+            if (this.unique_options[i].length == this.best_size) {
+                this.best_options.push(this.unique_options[i]);
+            }
+        }
+
+        const t1 = performance.now();
+        var bestPath = (this.best_options.length > 0) ? this.best_options[0] : null;
+        var pathLength = bestPath ? bestPath.length : 0;
+        var dx = Math.abs(to.my_x - current_node.my_x);
+        var dy = Math.abs(to.my_y - current_node.my_y);
+        var euclidean = Math.sqrt(dx * dx + dy * dy);
+        var manhattan = dx + dy;
+        var optimality = pathLength > 0 ? Number((pathLength / (euclidean || 1)).toFixed(2)) : 0;
+
+        return {
+            success: this.best_options.length > 0,
+            pathLength: pathLength,
+            bestPath: bestPath,
+            uniqueCount: this.unique_options.length,
+            bestCount: this.best_options.length,
+            complexity: this.complexity,
+            executionTimeMs: Number((t1 - t0).toFixed(3)),
+            euclidean: Number(euclidean.toFixed(2)),
+            manhattan: manhattan,
+            optimalityRatio: optimality
+        };
     }
     findUniquePath(i_agent) {
         this.best_size = Number.MAX_SAFE_INTEGER;
