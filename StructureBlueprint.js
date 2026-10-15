@@ -13,7 +13,8 @@ class StructureBlueprint {
     tags = [];
     layers = {
         floor: [],
-        walls: []
+        walls: [],
+        roof: []
     };
 
     constructor(config) {
@@ -28,7 +29,8 @@ class StructureBlueprint {
         // Deep copy layer matrices
         this.layers = {
             floor: config.layers && config.layers.floor ? config.layers.floor.map(row => [...row]) : [],
-            walls: config.layers && config.layers.walls ? config.layers.walls.map(row => [...row]) : []
+            walls: config.layers && config.layers.walls ? config.layers.walls.map(row => [...row]) : [],
+            roof: config.layers && config.layers.roof ? config.layers.roof.map(row => [...row]) : []
         };
     }
 
@@ -65,6 +67,7 @@ class StructureBlueprint {
 
         this.layers.floor = rotateMatrix(this.layers.floor);
         this.layers.walls = rotateMatrix(this.layers.walls);
+        this.layers.roof = rotateMatrix(this.layers.roof);
 
         // Swap dimensions
         this.width = oldH;
@@ -91,6 +94,7 @@ class StructureBlueprint {
 
         this.layers.floor = flipMatrix(this.layers.floor);
         this.layers.walls = flipMatrix(this.layers.walls);
+        this.layers.roof = flipMatrix(this.layers.roof);
         this.origin.x = this.width - 1 - this.origin.x;
         return this;
     }
@@ -107,6 +111,7 @@ class StructureBlueprint {
 
         this.layers.floor = flipMatrix(this.layers.floor);
         this.layers.walls = flipMatrix(this.layers.walls);
+        this.layers.roof = flipMatrix(this.layers.roof);
         this.origin.y = this.height - 1 - this.origin.y;
         return this;
     }
@@ -126,7 +131,8 @@ class StructureBlueprint {
             tags: [...this.tags],
             layers: {
                 floor: this.layers.floor.map(row => [...row]),
-                walls: this.layers.walls.map(row => [...row])
+                walls: this.layers.walls.map(row => [...row]),
+                roof: this.layers.roof.map(row => [...row])
             }
         });
     }
@@ -169,6 +175,13 @@ const StructureLibrary = {
                 ["W",  0 , "F",  0 , "W"], // F = Hearth/Stove
                 ["W",  0 ,  0 ,  0 , "W"],
                 [ 0 , "W", "D", "W",  0 ]  // D = Front door
+            ],
+            roof: [
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [0, 1, 1, 1, 0]
             ]
         }
     }),
@@ -196,6 +209,12 @@ const StructureLibrary = {
                 ["W",  0 ,  0 , "W"],
                 ["W",  0 , "F", "W"], // F = Weapon rack / Chest
                 ["W", "W", "D", "W"]  // D = Heavy door
+            ],
+            roof: [
+                [1, 1, 1, 1],
+                [1, 1, 1, 1],
+                [1, 1, 1, 1],
+                [1, 1, 1, 1]
             ]
         }
     }),
@@ -225,6 +244,13 @@ const StructureLibrary = {
                 ["W",  0 , "F",  0 , "W"], // F = Altar fixture
                 [ 0 ,  0 ,  0 ,  0 ,  0 ],
                 ["W",  0 , "D",  0 , "W"]  // D = Portal threshold
+            ],
+            roof: [
+                [1, 0, 1, 0, 1],
+                [0, 1, 1, 1, 0],
+                [1, 1, 0, 1, 1],
+                [0, 1, 1, 1, 0],
+                [1, 0, 0, 0, 1]
             ]
         }
     }),
@@ -252,6 +278,12 @@ const StructureLibrary = {
                 ["W",  0 ,  0 , "F",  0 , "W"], // F = Workbench
                 [ 0 ,  0 ,  0 ,  0 ,  0 ,  0 ],
                 [ 0 , "W", "P", "P", "W",  0 ]  // P = Wood planks approach
+            ],
+            roof: [
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0]
             ]
         }
     }),
@@ -277,6 +309,11 @@ const StructureLibrary = {
                 ["W", "F", "W"], // F = Loot stash behind barricade
                 ["W", "B", "W"], // B = Destructible barricade
                 [ 0 , "P",  0 ]  // P = Pathway approach
+            ],
+            roof: [
+                [1, 1, 1],
+                [0, 0, 0],
+                [0, 0, 0]
             ]
         }
     }),

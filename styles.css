@@ -118,10 +118,57 @@ body > div.canvas_container {
     cursor: pointer;
 }
 
-.cell.structure_roof {
-    fill: #7c2d12;
+/* Multi-Layer Overhead Roofs & Dynamic Cutaway (Phase 4) */
+#roof_layer {
+    pointer-events: none;
+}
+
+.cell_roof {
+    pointer-events: none;
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.35s ease;
+}
+
+/* Occluded (Outside View): Full overhead canopy / pitched shingles */
+.cell_roof.timber.occluded {
+    fill: #78350f;
     stroke: #451a03;
     stroke-width: 1px;
+    opacity: 1.0;
+}
+
+.cell_roof.stone.occluded {
+    fill: #334155;
+    stroke: #1e293b;
+    stroke-width: 1px;
+    opacity: 1.0;
+}
+
+/* Cutaway (Player Inside): Roof fades to translucent architectural outline */
+.cell_roof.cutaway {
+    opacity: 0.08;
+    fill: transparent;
+    stroke: rgba(251, 191, 36, 0.4);
+    stroke-width: 1px;
+    stroke-dasharray: 2 2;
+}
+
+/* Ambient Interior Lighting / Vignette (Phase 4) */
+#ambient_layer {
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+#ambient_layer.active {
+    opacity: 1;
+}
+
+#ambient_layer.inactive {
+    opacity: 0;
+}
+
+.interior_vignette {
+    fill: rgba(245, 158, 11, 0.04);
+    pointer-events: none;
 }
 
 /* Player Vector Avatar & Directional Heading (Phase 3) */

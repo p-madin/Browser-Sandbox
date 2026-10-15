@@ -115,6 +115,11 @@ class StructureStamper {
                     cell.durability = 3;
                 }
 
+                // Apply roof layer
+                if (blueprint.layers.roof && blueprint.layers.roof[y] && blueprint.layers.roof[y][x]) {
+                    cell.addFlag(CellFlags.STRUCTURE_ROOF);
+                }
+
                 cell.structureId = instanceId;
                 affectedCells.push(cell);
 
@@ -141,11 +146,16 @@ class StructureStamper {
             originY: originY,
             bounds: { startX, startY, endX, endY },
             blueprint: blueprint.clone(),
+            cells: affectedCells,
             cellsCount: affectedCells.length
         };
 
         map.structures = map.structures || [];
         map.structures.push(instance);
+
+        if (typeof StructureRegistry !== 'undefined') {
+            StructureRegistry.registerStructure(instance);
+        }
 
         // Re-render active grid if player is present
         if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {

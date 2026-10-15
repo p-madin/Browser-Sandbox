@@ -236,6 +236,16 @@ class BSPStructureGenerator {
             }
         }
 
+        // 7. Generate Overhead Stone Vaulted Roof
+        const roof = Array.from({ length: height }, () => Array(width).fill(0));
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (floor[y][x] === 1 || walls[y][x] === "W" || walls[y][x] === "D" || walls[y][x] === "F") {
+                    roof[y][x] = 1;
+                }
+            }
+        }
+
         return new StructureBlueprint({
             id: id,
             name: name,
@@ -246,7 +256,8 @@ class BSPStructureGenerator {
             tags: ["dungeon", "bsp", "ruins"],
             layers: {
                 floor: floor,
-                walls: walls
+                walls: walls,
+                roof: roof
             }
         });
     }

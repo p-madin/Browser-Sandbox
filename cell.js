@@ -242,7 +242,6 @@ class cell_meta {
         }
         if (this.flags & CellFlags.STRUCTURE_FIXTURE) classes.push("structure_fixture");
         if (this.flags & CellFlags.STRUCTURE_BARRICADE) classes.push("structure_barricade");
-        if (this.flags & CellFlags.STRUCTURE_ROOF) classes.push("structure_roof");
 
         if (Array.isArray(input)) {
             for (var i = 0; i < input.length; i++) {

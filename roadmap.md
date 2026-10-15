@@ -133,21 +133,35 @@ This document outlines the strategic engineering roadmap for Grid Engine's multi
 ---
 
 ### Phase 4: Multi-Layer Interior Occlusion & Dynamic Roof Cutaway
-* **Status**: 🟡 Next
+* **Status**: ✅ Completed
 * **Motivation**:
   When structures possess roofs or upper canopies, the player cannot see interior layouts from the outside. However, upon walking inside, the roof must seamlessly fade away so the interior floor plan and objects are clear.
 * **Architecture Solution**:
   1. **Dual-Layer Virtual SVG Renderer**:
-     - Extend [grid.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/grid.js) virtual pool to manage a secondary `<g id="roof_layer">` positioned above the entity layer.
+     - Extended [grid.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/grid.js) virtual pool to manage a secondary `<g id="roof_layer">` positioned above the entity layer.
   2. **Structure Bounding Volume Hierarchy (BVH)**:
-     - Register every spawned structure in a spatial index with its rectangular or polygonal bounds:
-       `StructureRegistry.getStructureAt(x, y)`.
+     - Implemented [StructureRegistry.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/StructureRegistry.js) spatial index with cell-level mapping:
+       `StructureRegistry.getStructureAt(x, y)` and `StructureRegistry.getOccupiedInterior(agent)`.
   3. **Proximity & Interior Detection**:
-     - Whenever the player's visual or grid coordinate enters a structure's bounds or interior tile (`CellFlags.STRUCTURE_FLOOR` or `CellFlags.STRUCTURE_ROOF`):
-       - Trigger a smooth opacity fade on that specific building's roof group (`opacity: 1.0` $\to$ `0.1` or `0.0`).
-       - As the player leaves the perimeter, smoothly restore the roof group opacity (`0.0` $\to$ `1.0`).
+     - Whenever the player's coordinate enters a structure's interior floor/fixture:
+       - Smoothly fades the roof (`opacity: 1.0` $\to$ `0.08` translucent blueprint outline).
+       - Exiting the structure smoothly restores full overhead roof opacity (`0.08` $\to$ `1.0`).
   4. **Interior Ambient Lighting / Vignette**:
-     - Apply an interior atmospheric filter or subtle vignette when inside buildings to create visual contrast between indoor sanctuaries and the outdoor wilderness.
+     - Applied a warm interior ambient lighting overlay (`<g id="ambient_layer">`) when inside buildings to establish psychological contrast between safe indoor shelters and the wild outdoors.
+
+---
+
+### Phase 5: Settlement Clustering, Town Generation & Wilderness Density Scaling
+* **Status**: 🟡 Next
+* **Motivation**:
+  Isolated single structures can feel sparse across a large 200×200 world. Introducing organic village clusters (town squares, windmills, clustered homesteads, and farmland) with configurable world generation density makes exploration deeply engaging.
+* **Architecture Solution**:
+  1. **Town & Settlement Cluster Generator**:
+     - Generate structured hamlets with central landmark shrines/wells, radiating paved roads, and clustered homesteads.
+  2. **Configurable World Density Engine**:
+     - Provide density controls in the UI/world generator for settlement frequency, wilderness ruins, and procedural dungeons.
+  3. **Wayfinding Signposts & Settlement Names**:
+     - Procedural town naming (e.g. *Oakhaven*, *Stoneford*, *Emberhold*) and interactive boundary markers.
 
 ---
 

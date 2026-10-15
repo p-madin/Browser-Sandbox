@@ -2,6 +2,8 @@ class frame_meta {
     frame_element;
     tiles_layer;
     player_layer;
+    roof_layer;
+    ambient_layer;
     player_avatar;
     player_rotator;
     frame_size_width = 0;
@@ -17,6 +19,7 @@ class frame_meta {
     all_blocked_cells = new Array();
     all_grass_cells = new Array();
     rect_elements = new Array();
+    roof_elements = new Array();
 
     constructor(element, i_agent, interactive) {
         this.frame_element = element;
@@ -50,9 +53,30 @@ class frame_meta {
         this.player_layer.setAttribute("id", "player_layer");
         this.frame_element.appendChild(this.player_layer);
 
+        // Layer 3: Overhead Roof layer for occlusion and cutaways (Phase 4)
+        this.roof_layer = create_svg_element("g");
+        this.roof_layer.setAttribute("id", "roof_layer");
+        this.roof_layer.style.pointerEvents = "none";
+        this.frame_element.appendChild(this.roof_layer);
+
+        // Layer 4: Ambient interior lighting / vignette layer (Phase 4)
+        this.ambient_layer = create_svg_element("g");
+        this.ambient_layer.setAttribute("id", "ambient_layer");
+        this.ambient_layer.setAttribute("class", "ambient_interior inactive");
+        this.ambient_layer.style.pointerEvents = "none";
+        var vignette = create_svg_element("rect");
+        vignette.setAttribute("x", "0");
+        vignette.setAttribute("y", "0");
+        vignette.setAttribute("width", "100%");
+        vignette.setAttribute("height", "100%");
+        vignette.setAttribute("class", "interior_vignette");
+        this.ambient_layer.appendChild(vignette);
+        this.frame_element.appendChild(this.ambient_layer);
+
         this.buildPlayerAvatar();
 
         this.rect_elements = new Array();
+        this.roof_elements = new Array();
         this.all_cells = new Array();
         this.all_blocked_cells = new Array();
 
@@ -73,6 +97,19 @@ class frame_meta {
 
                 this.tiles_layer.appendChild(cell_element);
                 this.rect_elements[frame_count] = cell_element;
+
+                // Overhead roof element in secondary virtual layer
+                var roof_element = create_svg_element("rect");
+                roof_element.setAttribute('meta-roof-frame', frame_count);
+                roof_element.setAttribute('class', "cell_roof");
+                roof_element.setAttribute('x', (i * this.cell_size) + "px");
+                roof_element.setAttribute('y', (j * this.cell_size) + "px");
+                roof_element.setAttribute('height', this.cell_size + "px");
+                roof_element.setAttribute('width', this.cell_size + "px");
+                roof_element.style.pointerEvents = "none";
+
+                this.roof_layer.appendChild(roof_element);
+                this.roof_elements[frame_count] = roof_element;
 
                 if (i === this.grid_mid_x && j === this.grid_mid_y) {
                     this.grid_mid_cell = frame_count;
@@ -146,6 +183,13 @@ class frame_meta {
                 this.tiles_layer.setAttribute("transform", `translate(${shiftX.toFixed(2)}, ${shiftY.toFixed(2)})`);
             }
         }
+        if (this.roof_layer) {
+            if (shiftX === 0 && shiftY === 0) {
+                this.roof_layer.removeAttribute("transform");
+            } else {
+                this.roof_layer.setAttribute("transform", `translate(${shiftX.toFixed(2)}, ${shiftY.toFixed(2)})`);
+            }
+        }
     }
 
     handleCellClick(cell_element, e) {
@@ -203,8 +247,38 @@ class frame_meta {
             }
         }
 
+        // Phase 4: Dynamic Interior Cutaway & Ambient Lighting
+        const occupiedStructure = (typeof StructureRegistry !== 'undefined')
+            ? StructureRegistry.getOccupiedInterior(i_agent)
+            : null;
+
         for (var k = 0; k < this.all_cells.length; k++) {
             this.all_cells[k].decorateCell(new Array());
+
+            var roof_element = this.roof_elements[k];
+            var cell_object = this.all_cells[k];
+            if (roof_element && cell_object) {
+                if (cell_object.hasFlag(CellFlags.STRUCTURE_ROOF)) {
+                    roof_element.style.display = "block";
+                    const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
+                    if (isCutaway) {
+                        roof_element.setAttribute('class', 'cell_roof cutaway');
+                    } else {
+                        const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
+                        roof_element.setAttribute('class', isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded');
+                    }
+                } else {
+                    roof_element.style.display = "none";
+                }
+            }
+        }
+
+        if (this.ambient_layer) {
+            if (occupiedStructure) {
+                this.ambient_layer.setAttribute("class", "ambient_interior active");
+            } else {
+                this.ambient_layer.setAttribute("class", "ambient_interior inactive");
+            }
         }
 
         // Update player avatar appearance and position
