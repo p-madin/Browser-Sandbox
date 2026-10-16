@@ -92,4 +92,37 @@ class pathfinder {
             optimalityRatio: result.optimalityRatio
         };
     }
+
+    sortStepOptions(targetCell, stepOptions) {
+        if (typeof globalPathfinderService !== 'undefined' && globalPathfinderService && globalPathfinderService.sortStepOptions) {
+            return globalPathfinderService.sortStepOptions(targetCell, stepOptions);
+        }
+        if (!stepOptions || !Array.isArray(stepOptions)) return [];
+        var toMeta = (targetCell && typeof targetCell.getCellMeta === 'function') 
+            ? targetCell.getCellMeta() 
+            : targetCell;
+        if (!toMeta) return [];
+
+        var temp = [];
+        for (var i = 0; i < stepOptions.length; i++) {
+            var item = stepOptions[i];
+            if (!item) continue;
+            var cellObj = item.cell ? item.cell : item;
+            var candidateMeta = (cellObj && typeof cellObj.getCellMeta === 'function') 
+                ? cellObj.getCellMeta() 
+                : cellObj;
+            if (!candidateMeta) continue;
+
+            var dx = Math.abs(candidateMeta.my_x - toMeta.my_x);
+            var dy = Math.abs(candidateMeta.my_y - toMeta.my_y);
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            temp.push({ cell: cellObj, distance: dist });
+        }
+        temp.sort((a, b) => a.distance - b.distance);
+        return temp;
+    }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { pathfinder };
 }

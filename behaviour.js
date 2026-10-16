@@ -1,15 +1,13 @@
-window.addEventListener("load", init);
-// window.addEventListener("resize", function () {
-//     if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
-//         globalGridObject.buildGridPool(agent, globalGridObject.interactive);
-//     }
-// });
+if (typeof EventTrait !== 'undefined') {
+    EventTrait.onLoad(init);
+} else if (typeof window !== 'undefined') {
+    window.addEventListener("load", init);
+}
 
 var globalMapObject, globalGridObject, agent, frame_root, my_cache_offset;
 var vector_horizontal = 0;
 var vector_vertical = 0;
 var to;
-
 
 const seedgen = () => (Math.random() * 2 ** 32) >>> 0;
 var seed_a = seedgen();
@@ -22,7 +20,7 @@ var seed_d = seedgen();
 // var seed_b = 3540297175;
 // var seed_c = 1158276817;
 // var seed_d = 265803571;
-const getRand = sfc32(seed_a, seed_b, seed_c, seed_d);
+var getRand = sfc32(seed_a, seed_b, seed_c, seed_d);
 
 function sfc32(a, b, c, d) {
     return function () {
@@ -38,10 +36,17 @@ function sfc32(a, b, c, d) {
 }
 
 function init() {
-    globalMapObject = new mapObject(200, 200);
-    frame_root = document.getElementById('frame');
-    agent = new agent_meta();
-    globalGridObject = new frame_meta(frame_root, agent, true);
+    getRand = sfc32(seed_a, seed_b, seed_c, seed_d);
+    globalMapObject = new mapObject(200, 200, [seed_a, seed_b, seed_c, seed_d]);
+    if (typeof document !== 'undefined') {
+        frame_root = document.getElementById('frame');
+        agent = new agent_meta();
+        globalGridObject = new frame_meta(frame_root, agent, true);
+    } else {
+        if (typeof agent_meta !== 'undefined') {
+            agent = new agent_meta();
+        }
+    }
 
     path_optionsUI = document.getElementById("path_options");
     path_options_disclosureUI = document.querySelector(".path_options_disclosure");
@@ -97,4 +102,8 @@ function clearGridPaths() {
             elem.classList.remove("path_step");
         }
     }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { init, sfc32, seedgen };
 }

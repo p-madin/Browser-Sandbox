@@ -8,7 +8,7 @@
 
 class PathfinderResearchLab {
     constructor(service = null) {
-        this.service = service || globalPathfinderService;
+        this.service = service || (typeof globalPathfinderService !== 'undefined' ? globalPathfinderService : (typeof require !== 'undefined' ? require('./PathfinderService.js').globalPathfinderService : null));
         this.history = [];
     }
 
@@ -47,3 +47,12 @@ class PathfinderResearchLab {
 }
 
 var globalResearchLab = new PathfinderResearchLab();
+
+if (typeof window !== 'undefined') {
+    window.PathfinderResearchLab = PathfinderResearchLab;
+    window.globalResearchLab = globalResearchLab;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PathfinderResearchLab, globalResearchLab };
+}

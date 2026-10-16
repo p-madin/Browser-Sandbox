@@ -4,6 +4,8 @@
  */
 
 class CanyonGenerator {
+    static faultLines = [];
+
     /**
      * Carves a jagged tectonic fault line across the map.
      * @param {mapObject} map 
@@ -86,6 +88,14 @@ class CanyonGenerator {
                             nearMountain = true;
                             break;
                         }
+                        const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                        for (const lb of lobesList) {
+                            if (Math.hypot(tx - lb.cx, ty - lb.cy) < lb.radius + 8) {
+                                nearMountain = true;
+                                break;
+                            }
+                        }
+                        if (nearMountain) break;
                     }
                     if (nearMountain) continue;
 
@@ -313,27 +323,122 @@ class CanyonGenerator {
      * @param {mapObject} map 
      * @returns {Array<cell_meta>}
      */
+    /**
+     * Finds a candidate tectonic fault line in open lowlands far from water, mountains, and spawn.
+     * @param {mapObject} map 
+     * @param {Array<Object>} existingFaults
+     * @returns {{start: {x: number, y: number}, end: {x: number, y: number}}|null}
+     */
+    static findRandomFaultLine(map, existingFaults = []) {
+        const rng = () => (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+        const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
+
+        for (let attempt = 0; attempt < 150; attempt++) {
+            const sx = Math.round((rng() - 0.5) * 140);
+            const sy = Math.round((rng() - 0.5) * 140);
+
+            // Must be at least 22 tiles away from player spawn
+            if (Math.hypot(sx, sy) < 22) continue;
+
+            const cell = map.map_cells[sx] && map.map_cells[sx][sy];
+            if (!cell) continue;
+
+            if (cell.elevation > 1 || cell.hasFlag(CellFlags.WATER) || cell.hasFlag(CellFlags.CHASM)) continue;
+
+            // Clearance check: at least 10 tiles away from water, chasms, and mountains
+            let inClearance = false;
+            for (let dx = -10; dx <= 10 && !inClearance; dx += 2) {
+                for (let dy = -10; dy <= 10 && !inClearance; dy += 2) {
+                    if (dx * dx + dy * dy > 100) continue;
+                    const nc = map.map_cells[sx + dx] && map.map_cells[sx + dx][sy + dy];
+                    if (!nc) continue;
+                    if (nc.hasFlag(CellFlags.WATER) || nc.hasFlag(CellFlags.WATER_SHALLOW) || nc.hasFlag(CellFlags.CHASM) || nc.elevation >= 2) {
+                        inClearance = true;
+                    }
+                }
+            }
+            if (inClearance) continue;
+
+            // Check distance from existing fault lines
+            let tooCloseToOther = false;
+            for (const f of existingFaults) {
+                if (Math.hypot(sx - f.start.x, sy - f.start.y) < 25) {
+                    tooCloseToOther = true;
+                    break;
+                }
+            }
+            if (tooCloseToOther) continue;
+
+            // Test candidate trajectories and choose one that stays in open lowlands
+            let bestEnd = null;
+            for (let aAttempt = 0; aAttempt < 10; aAttempt++) {
+                const angle = rng() * Math.PI * 2;
+                const length = 24 + Math.floor(rng() * 24); // 24 to 48 tiles
+                let blocked = false;
+
+                for (let step = 3; step <= length; step += 3) {
+                    const cx = Math.round(sx + Math.cos(angle) * step);
+                    const cy = Math.round(sy + Math.sin(angle) * step);
+                    if (cx < map.min_width + 6 || cx >= map.max_width - 6 || cy < map.min_height + 6 || cy >= map.max_height - 6) {
+                        blocked = true;
+                        break;
+                    }
+                    if (Math.hypot(cx, cy) < 18) { blocked = true; break; }
+                    const c = map.map_cells[cx] && map.map_cells[cx][cy];
+                    if (!c || c.elevation >= 2 || c.hasFlag(CellFlags.WATER) || c.hasFlag(CellFlags.WATER_SHALLOW) || c.hasFlag(CellFlags.CHASM)) {
+                        blocked = true;
+                        break;
+                    }
+                }
+                if (!blocked) {
+                    const ex = Math.max(map.min_width + 6, Math.min(map.max_width - 7, Math.round(sx + Math.cos(angle) * length)));
+                    const ey = Math.max(map.min_height + 6, Math.min(map.max_height - 7, Math.round(sy + Math.sin(angle) * length)));
+                    bestEnd = { x: ex, y: ey };
+                    break;
+                }
+            }
+
+            if (bestEnd) {
+                return { start: { x: sx, y: sy }, end: bestEnd };
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Generates world canyon system with dramatic fissures and suspension bridge crossings.
+     * @param {mapObject} map 
+     * @returns {Array<cell_meta>}
+     */
     static generateCanyons(map) {
         console.log("[CanyonGenerator] Carving rugged tectonic chasms and suspension crossings...");
         const allModified = [];
+        const rng = () => (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
 
-        // 1. Eastern Arid Rift: Fault line running North-South in eastern flat lowlands
-        const canyon1 = this.carveFaultLine(
-            map,
-            { x: 82, y: -25 },
-            { x: 82, y: 25 },
-            { width: 2, bridgeInterval: 25 }
-        );
-        allModified.push(...canyon1);
+        this.faultLines = [];
+        const numCanyons = 2;
 
-        // 2. Western Defile: Fault line running East-West in western flat lowlands
-        const canyon2 = this.carveFaultLine(
-            map,
-            { x: -82, y: -5 },
-            { x: -50, y: -5 },
-            { width: 2, bridgeInterval: 18 }
-        );
-        allModified.push(...canyon2);
+        for (let i = 0; i < numCanyons; i++) {
+            const fault = this.findRandomFaultLine(map, this.faultLines);
+            if (fault) {
+                this.faultLines.push(fault);
+                const carved = this.carveFaultLine(
+                    map,
+                    fault.start,
+                    fault.end,
+                    { width: 2, bridgeInterval: 20 }
+                );
+                allModified.push(...carved);
+            }
+        }
+
+        // If random search could not find 2 faults due to water/mountain density, place a perimeter fallback
+        if (this.faultLines.length === 0) {
+            const fallback = { start: { x: 80, y: -20 }, end: { x: 80, y: 20 } };
+            this.faultLines.push(fallback);
+            const carved = this.carveFaultLine(map, fallback.start, fallback.end, { width: 2, bridgeInterval: 20 });
+            allModified.push(...carved);
+        }
 
         // Synchronize local passability graph along all chasm edges and suspension bridges
         for (const cell of allModified) {
@@ -347,7 +452,7 @@ class CanyonGenerator {
             }
         }
 
-        console.log(`[CanyonGenerator] Canyon generation complete. Carved ${allModified.length} geological cells.`);
+        console.log(`[CanyonGenerator] Canyon generation complete. Carved ${allModified.length} geological cells across ${this.faultLines.length} chasms.`);
         return allModified;
     }
 }
@@ -355,4 +460,8 @@ class CanyonGenerator {
 // Global export
 if (typeof window !== 'undefined') {
     window.CanyonGenerator = CanyonGenerator;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { CanyonGenerator };
 }

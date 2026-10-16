@@ -13,7 +13,7 @@ class mapObject {
     seeds = [];
     prng = null;
 
-    constructor(map_width, map_height, seeds = null) {
+    constructor(map_width, map_height, seeds = null, ...rest) {
         this.min_width = (map_width / 2) * -1;
         this.max_width = map_width / 2;
         this.min_height = (map_height / 2) * -1;
@@ -22,10 +22,15 @@ class mapObject {
         // Initialize deterministic root seeds
         if (seeds && Array.isArray(seeds) && seeds.length >= 4) {
             this.seeds = [...seeds];
+        } else if (typeof seeds === 'number' && rest.length >= 3) {
+            this.seeds = [seeds, rest[0], rest[1], rest[2]];
         } else if (typeof seed_a !== 'undefined' && typeof seed_b !== 'undefined' && typeof seed_c !== 'undefined' && typeof seed_d !== 'undefined') {
             this.seeds = [seed_a, seed_b, seed_c, seed_d];
+        } else if (typeof globalThis !== 'undefined' && globalThis.seed_a && globalThis.seed_b) {
+            this.seeds = [globalThis.seed_a, globalThis.seed_b, globalThis.seed_c, globalThis.seed_d];
         } else {
-            this.seeds = [4270865943, 3540297175, 1158276817, 265803571];
+            const randSeed = () => (Math.random() * 2 ** 32) >>> 0;
+            this.seeds = [randSeed(), randSeed(), randSeed(), randSeed()];
         }
 
         if (typeof sfc32 === 'function') {
@@ -108,6 +113,9 @@ class mapObject {
             }
         }
         this.structures = [];
+        if (typeof ElevationService !== 'undefined' && typeof ElevationService.initializeRidges === 'function') {
+            ElevationService.initializeRidges(this);
+        }
         if (typeof RiverGenerator !== 'undefined') {
             RiverGenerator.generateHydrology(this);
         }
@@ -192,4 +200,8 @@ class mapObject {
 
         return { x, y };
     }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { mapObject };
 }

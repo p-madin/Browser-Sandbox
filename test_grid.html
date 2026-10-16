@@ -3,6 +3,7 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="EventTrait.js" type="text/javascript"></script>
     <script src="behaviour.js" type="text/javascript"></script>
     <script src="cell.js" type="text/javascript"></script>
     <script src="StructureBlueprint.js" type="text/javascript"></script>
@@ -36,6 +37,7 @@
     <script src="Agent States/enemyAgentDecoration.js" type="text/javascript"></script>
     <script src="StructureStamperUI.js" type="text/javascript"></script>
     <script src="benchmark.js" type="text/javascript"></script>
+    <script src="AgentBridge.js" type="text/javascript"></script>
 
     <link rel="stylesheet" href="styles.css">
     </link>
@@ -110,6 +112,7 @@
                 </div>
                 <div class="benchmark_button_row">
                     <button id="benchmark_run_btn" class="benchmark_btn primary">▶ Run Suite</button>
+                    <button id="benchmark_walk_btn" class="benchmark_btn" style="background: #0284c7; border-color: #38bdf8;">🏃 Walk Benchmark (Jitter)</button>
                     <button id="benchmark_copy_btn" class="benchmark_btn">📋 Copy Report</button>
                     <button id="benchmark_export_btn" class="benchmark_btn">💾 JSON</button>
                 </div>
@@ -146,6 +149,27 @@
         <summary>Options</summary>
         <div id='path_options'></div>
     </details>
+
+    <!-- Browser Sub-Agent Automation Bar (Roadmap 7) -->
+    <div id="agent_automation_bar" class="automation_bar">
+        <div class="automation_header">
+            <span>🤖</span>
+            <strong>Sub-Agent Automation &amp; Biomes</strong>
+        </div>
+        <div class="automation_row">
+            <button id="teleport_spawn_btn" class="auto_btn">📍 Spawn</button>
+            <button id="teleport_mountains_btn" class="auto_btn">🏔️ Mountains</button>
+            <button id="teleport_canyons_btn" class="auto_btn">峡 Canyons</button>
+            <button id="teleport_river_btn" class="auto_btn">🌊 River</button>
+            <button id="teleport_lake_btn" class="auto_btn">🛶 Lake</button>
+        </div>
+        <div class="automation_row">
+            <input id="seed_input" type="text" placeholder="Seed (e.g. 12345)" class="auto_input" />
+            <button id="seed_apply_btn" class="auto_btn primary">Apply</button>
+            <button id="seed_random_btn" class="auto_btn">🎲 Re-roll</button>
+        </div>
+        <pre id="world_status_telemetry" style="display:none;"></pre>
+    </div>
 </body>
 
 </html>

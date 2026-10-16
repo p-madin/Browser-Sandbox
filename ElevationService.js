@@ -16,6 +16,91 @@ class ElevationService {
     ];
 
     /**
+     * Initializes authoritative mountain massif geological centers and clearance envelopes.
+     * Uses seeded pseudo-random distribution across the entire map, avoiding spawn and each other.
+     * @param {mapObject} map 
+     */
+    static initializeRidges(map) {
+        const rng = () => (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
+
+        const numMassifs = 2 + Math.floor(rng() * 3); // 2 to 4 massifs
+        const massifs = [];
+        const names = [
+            "Mistveil Ridge", "Cragstone Peaks", "Stormfall Massif", 
+            "Frostfang Highlands", "Ironhorn Range", "Shadowcrag Heights",
+            "Thunderpeak Bluffs", "Ashen Crest"
+        ];
+        const shuffledNames = [...names].sort(() => rng() - 0.5);
+
+        for (let attempt = 0; attempt < 400 && massifs.length < numMassifs; attempt++) {
+            // Pick a random location across [-80, 80]
+            const cx = Math.round((rng() - 0.5) * 160);
+            const cy = Math.round((rng() - 0.5) * 160);
+
+            // Keep player spawn sanctuary clear (at least 22 tiles away from (0,0))
+            if (Math.hypot(cx, cy) < 22) continue;
+
+            const radius = 14 + Math.floor(rng() * 8); // 14 to 21
+            const peakRadius = 5 + Math.floor(rng() * 4); // 5 to 8
+
+            // Keep valleys open between massifs (~28-34 tiles separation)
+            let tooClose = false;
+            for (const m of massifs) {
+                if (Math.hypot(cx - m.cx, cy - m.cy) < Math.max(radius, m.radius) + 12) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose) continue;
+
+            // Generate 1 to 2 ridge elongation lobes for organic, asymmetric mountain ranges
+            const lobes = [];
+            const numLobes = 1 + (rng() < 0.65 ? 1 : 0);
+            for (let li = 0; li < numLobes; li++) {
+                const ridgeAngle = rng() * Math.PI * 2;
+                const ridgeDist = 7 + Math.floor(rng() * 9);
+                const lobeX = Math.round(cx + Math.cos(ridgeAngle) * ridgeDist);
+                const lobeY = Math.round(cy + Math.sin(ridgeAngle) * ridgeDist);
+                const lobeR = Math.round(radius * (0.65 + rng() * 0.2));
+                const lobePeak = Math.max(3, Math.round(peakRadius * 0.65));
+
+                if (Math.hypot(lobeX, lobeY) >= 18) {
+                    lobes.push({ cx: lobeX, cy: lobeY, radius: lobeR, peakRadius: lobePeak });
+                }
+            }
+
+            massifs.push({
+                cx,
+                cy,
+                radius,
+                peakRadius,
+                name: shuffledNames[massifs.length % shuffledNames.length],
+                lobe: lobes[0] || null,
+                lobes: lobes
+            });
+        }
+
+        // Fallback: If rejection sampling produced fewer than 2 massifs, add a guaranteed distant massif
+        if (massifs.length < 2) {
+            const fallbackAngle = rng() * Math.PI * 2;
+            const fallbackDist = 45 + Math.floor(rng() * 25);
+            massifs.push({
+                cx: Math.round(Math.cos(fallbackAngle) * fallbackDist),
+                cy: Math.round(Math.sin(fallbackAngle) * fallbackDist),
+                radius: 16,
+                peakRadius: 6,
+                name: "Wild Peak",
+                lobe: null,
+                lobes: []
+            });
+        }
+
+        ElevationService.mountainRidges = massifs;
+        console.log(`[ElevationService] Initialized ${massifs.length} procedural mountain ranges:`, massifs);
+        return massifs;
+    }
+
+    /**
      * Procedurally generates elevation tiers across the world map.
      * @param {mapObject} map 
      * @param {Object} options 
@@ -28,7 +113,15 @@ class ElevationService {
         const modifiedCells = [];
 
         // 1. Highland and Mountain geological centers
+        if (!ElevationService.mountainRidges || ElevationService.mountainRidges.length === 0) {
+            ElevationService.initializeRidges(map);
+        }
         const ridges = ElevationService.mountainRidges;
+
+        // Seed-driven harmonic boundary jitter parameters
+        const phaseX = (map && map.seeds && map.seeds.length >= 1) ? ((map.seeds[0] % 1000) * 0.01) : 0.0;
+        const phaseY = (map && map.seeds && map.seeds.length >= 2) ? ((map.seeds[1] % 1000) * 0.01) : 0.0;
+        const freq = 0.38 + ((map && map.seeds && map.seeds.length >= 3 ? (map.seeds[2] % 10) : 5) * 0.008);
 
         // 2. Assign elevation tiers
         for (let x = map.min_width; x < map.max_width; x++) {
@@ -56,12 +149,22 @@ class ElevationService {
                 let elev = 1;
                 for (const r of ridges) {
                     const dist = Math.hypot(x - r.cx, y - r.cy);
-                    const jitter = Math.sin(x * 0.4) * 2.5 + Math.cos(y * 0.4) * 2.5;
+                    const jitter = Math.sin(x * freq + phaseX) * 2.8 + Math.cos(y * freq + phaseY) * 2.8;
 
-                    if (dist < r.peakRadius + jitter * 0.6) {
+                    let inPeak = (dist < r.peakRadius + jitter * 0.6);
+                    let inHighland = (dist < r.radius + jitter);
+
+                    const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                    for (const lb of lobesList) {
+                        const lDist = Math.hypot(x - lb.cx, y - lb.cy);
+                        if (lDist < lb.peakRadius + jitter * 0.5) inPeak = true;
+                        if (lDist < lb.radius + jitter * 0.8) inHighland = true;
+                    }
+
+                    if (inPeak) {
                         elev = 3; // Mountain peaks & crags
                         break;
-                    } else if (dist < r.radius + jitter) {
+                    } else if (inHighland) {
                         if (elev < 2) elev = 2; // Highland plateaus
                     }
                 }
@@ -178,4 +281,8 @@ class ElevationService {
 // Global export
 if (typeof window !== 'undefined') {
     window.ElevationService = ElevationService;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { ElevationService };
 }

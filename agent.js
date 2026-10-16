@@ -74,8 +74,31 @@ class agent_meta {
 
         var self = this;
         var step = i_path[0];
-        var from_meta = step.stepOptionFromCell.getCellMeta();
-        var to_meta = step.stepOptionToCell.getCellMeta();
+        var from_meta = null;
+        var to_meta = null;
+
+        if (step && step.stepOptionFromCell && step.stepOptionToCell) {
+            from_meta = step.stepOptionFromCell.getCellMeta();
+            to_meta = step.stepOptionToCell.getCellMeta();
+        } else if (step) {
+            to_meta = (typeof step.getCellMeta === 'function') ? step.getCellMeta() : step;
+            from_meta = (self.agentCellOccupied && typeof self.agentCellOccupied.getCellMeta === 'function')
+                ? self.agentCellOccupied.getCellMeta()
+                : (globalMapObject && globalMapObject.map_cells[self.x] && globalMapObject.map_cells[self.x][self.y] ? globalMapObject.map_cells[self.x][self.y].getCellMeta() : null);
+        }
+
+        if (!to_meta || !from_meta) {
+            console.warn("[walkPath] Invalid to_meta or from_meta for step:", step);
+            i_path.splice(0, 1);
+            if (i_path.length > 0) {
+                self.walkPath(i_path);
+            } else if (typeof self.onWalkComplete === 'function') {
+                var cb = self.onWalkComplete;
+                self.onWalkComplete = null;
+                cb();
+            }
+            return;
+        }
 
         // Phase 3: Auto-open closed doorway upon stepping through
         if (to_meta && (to_meta.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED) || to_meta.hasFlag(CellFlags.STRUCTURE_DOOR)) && !to_meta.hasFlag(CellFlags.STRUCTURE_DOOR_OPEN)) {
@@ -129,6 +152,11 @@ class agent_meta {
                     }
                     self.destinationCell = null;
                     globalGridObject.updateGrid(self, true);
+                    if (typeof self.onWalkComplete === 'function') {
+                        var cb = self.onWalkComplete;
+                        self.onWalkComplete = null;
+                        cb();
+                    }
                     return;
                 }
 

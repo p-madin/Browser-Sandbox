@@ -42,14 +42,20 @@ class IPathfinderStrategy {
     }
 
     sortStepOptions(targetCell, stepOptions) {
-        var toMeta = targetCell.getCellMeta();
+        if (!stepOptions || !Array.isArray(stepOptions)) return [];
+        var toMeta = (targetCell && typeof targetCell.getCellMeta === 'function') ? targetCell.getCellMeta() : targetCell;
+        if (!toMeta) return [];
         var temp = [];
         for (var i = 0; i < stepOptions.length; i++) {
-            var candidateMeta = stepOptions[i].getCellMeta();
+            var item = stepOptions[i];
+            if (!item) continue;
+            var cellObj = item.cell ? item.cell : item;
+            var candidateMeta = (cellObj && typeof cellObj.getCellMeta === 'function') ? cellObj.getCellMeta() : cellObj;
+            if (!candidateMeta) continue;
             var dx = Math.abs(candidateMeta.my_x - toMeta.my_x);
             var dy = Math.abs(candidateMeta.my_y - toMeta.my_y);
             var dist = Math.sqrt(dx * dx + dy * dy);
-            temp.push({ cell: stepOptions[i], distance: dist });
+            temp.push({ cell: cellObj, distance: dist });
         }
         temp.sort((a, b) => a.distance - b.distance);
         return temp;
@@ -489,7 +495,10 @@ class AStarStrategy extends IPathfinderStrategy {
                 if (visitedInBranch.has(fromRef)) continue; // cycle prevention
 
                 visitedInBranch.add(fromRef);
-                currentEdges.push(new stepOption(edge.fromCell, edge.toCell));
+                const StepOpt = (typeof stepOption !== 'undefined') ? stepOption : (typeof require !== 'undefined' ? require('./stepOption.js').stepOption : class {
+                    constructor(f, t) { this.stepOptionFromCell = f; this.stepOptionToCell = t; this.stepOptionWeight = 1; }
+                });
+                currentEdges.push(new StepOpt(edge.fromCell, edge.toCell));
                 backtrack(fromRef, currentEdges);
                 currentEdges.pop();
                 visitedInBranch.delete(fromRef);
@@ -572,3 +581,12 @@ class PathfinderService {
 
 // Global instance export
 var globalPathfinderService = new PathfinderService();
+
+if (typeof window !== 'undefined') {
+    window.PathfinderService = PathfinderService;
+    window.globalPathfinderService = globalPathfinderService;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PathfinderService, globalPathfinderService };
+}

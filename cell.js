@@ -719,3 +719,7 @@ class cell_meta {
         }
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { cell_meta, CellFlags, CellFlagAliases };
+}

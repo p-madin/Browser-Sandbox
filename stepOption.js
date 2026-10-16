@@ -8,3 +8,7 @@ class stepOption{
         this.stepOptionWeight = 1;
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { stepOption };
+}

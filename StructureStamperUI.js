@@ -83,15 +83,9 @@ class StructureStamperUI {
         const viewSpawnBtn = document.getElementById("view_spawn_btn");
         if (viewSpawnBtn) {
             viewSpawnBtn.addEventListener("click", () => {
-                if (typeof globalGridObject === 'undefined' || !globalGridObject || typeof agent === 'undefined' || !agent) return;
-                vector_horizontal = globalGridObject.grid_mid_x;
-                vector_vertical = globalGridObject.grid_mid_y;
-                agent.x = 0;
-                agent.y = 0;
-                if (globalMapObject && globalMapObject.map_cells[0] && globalMapObject.map_cells[0][0]) {
-                    agent.agentCellOccupied = globalMapObject.map_cells[0][0].getCellMeta();
+                if (typeof AgentBridge !== 'undefined') {
+                    AgentBridge.teleportBiome("spawn");
                 }
-                globalGridObject.updateGrid(agent);
                 this.updateStatus("Camera: Spawn Lowlands Meadow (h=1)");
             });
         }
@@ -99,36 +93,20 @@ class StructureStamperUI {
         const viewMountainsBtn = document.getElementById("view_mountains_btn");
         if (viewMountainsBtn) {
             viewMountainsBtn.addEventListener("click", () => {
-                if (typeof globalGridObject === 'undefined' || !globalGridObject || typeof agent === 'undefined' || !agent) return;
-                const targetX = -65;
-                const targetY = -60;
-                vector_horizontal = globalGridObject.grid_mid_x - targetX;
-                vector_vertical = globalGridObject.grid_mid_y - targetY;
-                agent.x = targetX;
-                agent.y = targetY;
-                if (globalMapObject && globalMapObject.map_cells[targetX] && globalMapObject.map_cells[targetX][targetY]) {
-                    agent.agentCellOccupied = globalMapObject.map_cells[targetX][targetY].getCellMeta();
+                if (typeof AgentBridge !== 'undefined') {
+                    AgentBridge.teleportBiome("mountains");
                 }
-                globalGridObject.updateGrid(agent);
-                this.updateStatus("Camera: Northwest Highlands Massif (h=2 & h=3)");
+                this.updateStatus("Camera: Mountain Massif (h=2 & h=3)");
             });
         }
 
         const viewCanyonBtn = document.getElementById("view_canyon_btn");
         if (viewCanyonBtn) {
             viewCanyonBtn.addEventListener("click", () => {
-                if (typeof globalGridObject === 'undefined' || !globalGridObject || typeof agent === 'undefined' || !agent) return;
-                const targetX = 0;
-                const targetY = -25;
-                vector_horizontal = globalGridObject.grid_mid_x - targetX;
-                vector_vertical = globalGridObject.grid_mid_y - targetY;
-                agent.x = targetX;
-                agent.y = targetY;
-                if (globalMapObject && globalMapObject.map_cells[targetX] && globalMapObject.map_cells[targetX][targetY]) {
-                    agent.agentCellOccupied = globalMapObject.map_cells[targetX][targetY].getCellMeta();
+                if (typeof AgentBridge !== 'undefined') {
+                    AgentBridge.teleportBiome("canyons");
                 }
-                globalGridObject.updateGrid(agent);
-                this.updateStatus("Camera: River Canyon Chasm");
+                this.updateStatus("Camera: Tectonic Chasm Rift");
             });
         }
     }

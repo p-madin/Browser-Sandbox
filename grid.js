@@ -52,6 +52,8 @@ class frame_meta {
         this.cell_size_y = Math.max(1, Math.floor(this.frame_size_height / this.cell_size));
         this.grid_mid_x = Math.floor(this.cell_size_x / 2);
         this.grid_mid_y = Math.floor(this.cell_size_y / 2);
+        var pad = 3;
+        this.grid_mid_cell = (this.grid_mid_x + pad) * (this.cell_size_y + 2 * pad + 1) + (this.grid_mid_y + pad);
 
         if (i_agent.x == "unset") {
             i_agent.x = 0;
@@ -793,6 +795,12 @@ class frame_meta {
             this.player_avatar.setAttribute("transform", `translate(${centerX}, ${centerY})`);
         }
 
-        i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];
+        if (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells && globalMapObject.map_cells[i_agent.x] && globalMapObject.map_cells[i_agent.x][i_agent.y]) {
+            i_agent.agentCellOccupied = globalMapObject.map_cells[i_agent.x][i_agent.y];
+        } else if (this.all_cells && this.all_cells[this.grid_mid_cell]) {
+            i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];
+        } else if (this.all_cells && this.all_cells.length > 0) {
+            i_agent.agentCellOccupied = this.all_cells[0];
+        }
     }
 }

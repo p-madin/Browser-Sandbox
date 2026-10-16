@@ -4,6 +4,9 @@
  */
 
 class RiverGenerator {
+    static primaryRiverCourse = [];
+    static lakeCenter = null;
+
     /**
      * Carves a continuous meandering river across the map.
      * @param {mapObject} map 
@@ -34,7 +37,7 @@ class RiverGenerator {
                     }
 
                     // Keep player spawn clearing dry
-                    if (Math.hypot(tx, ty) < 6) {
+                    if (Math.hypot(tx, ty) < 14) {
                         continue;
                     }
 
@@ -54,6 +57,14 @@ class RiverGenerator {
                             touchesMountain = true;
                             break;
                         }
+                        const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                        for (const lb of lobesList) {
+                            if (Math.hypot(tx - lb.cx, ty - lb.cy) < lb.radius + 6) {
+                                touchesMountain = true;
+                                break;
+                            }
+                        }
+                        if (touchesMountain) break;
                     }
                     if (touchesMountain) continue;
 
@@ -79,7 +90,7 @@ class RiverGenerator {
 
         // Trace course with directional momentum and smooth sinusoidal meander
         let steps = 0;
-        const maxSteps = 400;
+        const maxSteps = 450;
 
         while ((Math.hypot(end.x - curX, end.y - curY) > 2) && steps < maxSteps) {
             steps++;
@@ -94,12 +105,30 @@ class RiverGenerator {
             const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
             for (const r of ridges) {
                 const dist = Math.hypot(curX - r.cx, curY - r.cy);
-                const safeDist = r.radius + 8;
+                const safeDist = r.radius + 9;
                 if (dist < safeDist) {
                     const awayAngle = Math.atan2(curY - r.cy, curX - r.cx);
                     const force = (safeDist - dist) / safeDist;
-                    deflectAngle += (awayAngle - targetAngle) * force;
+                    deflectAngle += Math.sin(awayAngle - targetAngle) * force * 1.8;
                 }
+                const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                for (const lb of lobesList) {
+                    const lDist = Math.hypot(curX - lb.cx, curY - lb.cy);
+                    const lSafeDist = lb.radius + 9;
+                    if (lDist < lSafeDist) {
+                        const awayAngle = Math.atan2(curY - lb.cy, curX - lb.cx);
+                        const force = (lSafeDist - lDist) / lSafeDist;
+                        deflectAngle += Math.sin(awayAngle - targetAngle) * force * 1.8;
+                    }
+                }
+            }
+
+            // Spawn sanctuary avoidance deflection vector (keep r < 14 dry)
+            const distSpawn = Math.hypot(curX, curY);
+            if (distSpawn < 18) {
+                const awaySpawn = Math.atan2(curY, curX);
+                const force = (18 - distSpawn) / 18;
+                deflectAngle += Math.sin(awaySpawn - targetAngle) * force * 2.2;
             }
 
             const currentAngle = targetAngle + meanderOffset + deflectAngle;
@@ -181,25 +210,159 @@ class RiverGenerator {
     static generateHydrology(map) {
         console.log("[RiverGenerator] Generating natural hydrology, rivers, and lakes...");
         const allModified = [];
+        const rng = () => (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
 
-        // 1. Primary River: Flows through western lowland valley past spawn to southeast sea
-        const river1 = this.carveRiverCourse(
-            map,
-            { x: -35, y: -85 },
-            { x: 80, y: 55 },
-            { width: 2, shallowFrequency: 0.12 }
-        );
-        allModified.push(...river1);
+        // Ensure mountain ridges are initialized for deflection and avoidance
+        if (typeof ElevationService !== 'undefined' && (!ElevationService.mountainRidges || ElevationService.mountainRidges.length === 0)) {
+            ElevationService.initializeRidges(map);
+        }
+        const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
 
-        // 2. Lake Basin: Formed along the southeastern river meander
-        const lake1 = this.carveLakeBasin(map, 35, 30, 6);
+        // Helper to pick a random perimeter coordinate along one of 4 map borders:
+        // 0 = North (y = -85), 1 = East (x = 85), 2 = South (y = 85), 3 = West (x = -85)
+        const getBorderPoint = (borderSide) => {
+            const span = -60 + Math.round(rng() * 120);
+            switch (borderSide) {
+                case 0: return { x: span, y: -85 };
+                case 1: return { x: 85, y: span };
+                case 2: return { x: span, y: 85 };
+                case 3: return { x: -85, y: span };
+                default: return { x: span, y: -85 };
+            }
+        };
+
+        // Pick random start border and a different exit border (adjacent or opposite)
+        const startBorder = Math.floor(rng() * 4);
+        const endBorder = (startBorder + 1 + Math.floor(rng() * 3)) % 4;
+
+        let startPoint = null;
+        let endPoint = null;
+
+        // Find valid start point outside mountain massif clearance
+        for (let attempt = 0; attempt < 50; attempt++) {
+            const pt = getBorderPoint(startBorder);
+            let inMountain = false;
+            for (const r of ridges) {
+                if (Math.hypot(pt.x - r.cx, pt.y - r.cy) < r.radius + 9) inMountain = true;
+                const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                for (const lb of lobesList) {
+                    if (Math.hypot(pt.x - lb.cx, pt.y - lb.cy) < lb.radius + 9) inMountain = true;
+                }
+            }
+            if (!inMountain) {
+                startPoint = pt;
+                break;
+            }
+        }
+        if (!startPoint) startPoint = getBorderPoint(startBorder);
+
+        // Find valid end point outside mountain massif clearance
+        for (let attempt = 0; attempt < 50; attempt++) {
+            const pt = getBorderPoint(endBorder);
+            let inMountain = false;
+            for (const r of ridges) {
+                if (Math.hypot(pt.x - r.cx, pt.y - r.cy) < r.radius + 9) inMountain = true;
+                const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                for (const lb of lobesList) {
+                    if (Math.hypot(pt.x - lb.cx, pt.y - lb.cy) < lb.radius + 9) inMountain = true;
+                }
+            }
+            if (!inMountain) {
+                endPoint = pt;
+                break;
+            }
+        }
+        if (!endPoint) endPoint = getBorderPoint(endBorder);
+
+        // Select an intermediate lowland waypoint so the river bends naturally across the world
+        let midPoint = null;
+        for (let attempt = 0; attempt < 80; attempt++) {
+            const mx = Math.round((rng() - 0.5) * 110);
+            const my = Math.round((rng() - 0.5) * 110);
+            if (Math.hypot(mx, my) < 22) continue; // avoid spawn sanctuary
+            let inMtn = false;
+            for (const r of ridges) {
+                if (Math.hypot(mx - r.cx, my - r.cy) < r.radius + 10) inMtn = true;
+                const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                for (const lb of lobesList) {
+                    if (Math.hypot(mx - lb.cx, my - lb.cy) < lb.radius + 10) inMtn = true;
+                }
+            }
+            if (!inMtn) {
+                midPoint = { x: mx, y: my };
+                break;
+            }
+        }
+
+        this.primaryRiverCourse = [];
+        if (midPoint) {
+            const riverSegment1 = this.carveRiverCourse(
+                map,
+                startPoint,
+                midPoint,
+                { width: 2, shallowFrequency: 0.12 }
+            );
+            allModified.push(...riverSegment1);
+
+            const riverSegment2 = this.carveRiverCourse(
+                map,
+                midPoint,
+                endPoint,
+                { width: 2, shallowFrequency: 0.12 }
+            );
+            allModified.push(...riverSegment2);
+            this.primaryRiverCourse = [...riverSegment1, ...riverSegment2].map(c => ({ x: c.my_x, y: c.my_y }));
+        } else {
+            const river1 = this.carveRiverCourse(
+                map,
+                startPoint,
+                endPoint,
+                { width: 2, shallowFrequency: 0.12 }
+            );
+            allModified.push(...river1);
+            this.primaryRiverCourse = river1.map(c => ({ x: c.my_x, y: c.my_y }));
+        }
+
+        // 2. Lake Basin: Formed along the river meander in open lowlands outside spawn & mountains
+        const candidateRiverPoints = this.primaryRiverCourse.filter(p => {
+            if (Math.hypot(p.x, p.y) < 18) return false;
+            if (Math.abs(p.x) > 70 || Math.abs(p.y) > 70) return false;
+            for (const r of ridges) {
+                if (Math.hypot(p.x - r.cx, p.y - r.cy) < r.radius + 12) return false;
+                const lobesList = r.lobes || (r.lobe ? [r.lobe] : []);
+                for (const lb of lobesList) {
+                    if (Math.hypot(p.x - lb.cx, p.y - lb.cy) < lb.radius + 12) return false;
+                }
+            }
+            return true;
+        });
+
+        let lakePt = null;
+        if (candidateRiverPoints.length > 0) {
+            lakePt = candidateRiverPoints[Math.floor(rng() * candidateRiverPoints.length)];
+        } else if (this.primaryRiverCourse.length > 0) {
+            lakePt = this.primaryRiverCourse[Math.floor(this.primaryRiverCourse.length * 0.5)];
+        } else {
+            lakePt = { x: 35, y: 30 };
+        }
+
+        const lakeR = 5 + Math.floor(rng() * 3);
+        this.lakeCenter = { x: lakePt.x, y: lakePt.y, radius: lakeR };
+        const lake1 = this.carveLakeBasin(map, lakePt.x, lakePt.y, lakeR);
         allModified.push(...lake1);
 
-        // 3. Secondary Tributary: Joining the main river from north-central
+        // 3. Secondary Tributary: Joining from another perimeter side to primary river
+        const tribBorder = (startBorder + 2) % 4;
+        const tribStart = getBorderPoint(tribBorder);
+        let tribTarget = endPoint;
+        if (this.primaryRiverCourse.length > 10) {
+            tribTarget = this.primaryRiverCourse[Math.floor(rng() * Math.floor(this.primaryRiverCourse.length * 0.7))];
+        }
+
         const river2 = this.carveRiverCourse(
             map,
-            { x: 10, y: -85 },
-            { x: -24, y: -20 },
+            tribStart,
+            tribTarget,
             { width: 2, shallowFrequency: 0.08 }
         );
         allModified.push(...river2);
@@ -224,4 +387,8 @@ class RiverGenerator {
 // Global export
 if (typeof window !== 'undefined') {
     window.RiverGenerator = RiverGenerator;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { RiverGenerator };
 }

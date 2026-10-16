@@ -321,6 +321,7 @@ class BenchmarkUIController {
         this.panel = document.getElementById("benchmark_panel");
         this.toggleBtn = document.getElementById("benchmark_toggle_btn");
         this.runBtn = document.getElementById("benchmark_run_btn");
+        this.walkBtn = document.getElementById("benchmark_walk_btn");
         this.copyBtn = document.getElementById("benchmark_copy_btn");
         this.exportBtn = document.getElementById("benchmark_export_btn");
         this.algoSelect = document.getElementById("benchmark_algo_select");
@@ -334,6 +335,9 @@ class BenchmarkUIController {
         }
         if (this.runBtn) {
             this.runBtn.addEventListener("click", () => this.handleRun());
+        }
+        if (this.walkBtn) {
+            this.walkBtn.addEventListener("click", () => this.handleWalkBenchmark());
         }
         if (this.copyBtn) {
             this.copyBtn.addEventListener("click", () => this.handleCopy());
@@ -512,7 +516,113 @@ class BenchmarkUIController {
         });
     }
 
+    async handleWalkBenchmark() {
+        if (!window.globalWalkBenchmark) {
+            window.globalWalkBenchmark = new WalkAnimationBenchmark();
+        }
+        if (window.globalWalkBenchmark.isRunning) return;
+
+        this.walkBtn.disabled = true;
+        this.walkBtn.textContent = "🏃 Walking...";
+        this.statusEl.textContent = "Executing 10-step walk telemetry benchmark across terrain...";
+
+        try {
+            var telemetry = await window.globalWalkBenchmark.runWalkBenchmark(10);
+            this.lastMode = 'walk';
+            this.lastResults = telemetry;
+            this.renderWalkBenchmarkResults(telemetry);
+            this.statusEl.textContent = `✅ Walk benchmark complete: ${telemetry.avgFps} FPS, ${telemetry.jankFramesCount} jank frames`;
+        } catch (err) {
+            console.error("Walk benchmark failed:", err);
+            this.statusEl.textContent = `❌ Walk benchmark failed: ${err.message}`;
+        } finally {
+            this.walkBtn.disabled = false;
+            this.walkBtn.textContent = "🏃 Walk Benchmark (Jitter)";
+        }
+    }
+
+    renderWalkBenchmarkResults(telemetry) {
+        if (!this.cardsEl || !this.tableBody) return;
+
+        this.cardsEl.style.display = "flex";
+        this.cardsEl.innerHTML = `
+            <div class="summary_card">
+                <div class="card_val text-emerald">${telemetry.avgFps}</div>
+                <div class="card_lbl">Avg FPS (Min: ${telemetry.minFps})</div>
+            </div>
+            <div class="summary_card">
+                <div class="card_val text-blue">${telemetry.avgFrameTimeMs}ms</div>
+                <div class="card_lbl">Avg Frame (Max: ${telemetry.maxFrameTimeMs}ms)</div>
+            </div>
+            <div class="summary_card">
+                <div class="card_val ${telemetry.jankFramesCount > 0 ? 'text-amber' : 'text-emerald'}">${telemetry.jankFramesCount}</div>
+                <div class="card_lbl">Jank Frames (${telemetry.jankFrameRatePct}%)</div>
+            </div>
+            <div class="summary_card">
+                <div class="card_val text-purple">${telemetry.avgUpdateGridMs}ms</div>
+                <div class="card_lbl">updateGrid (Nodes: ${telemetry.totalSvgElements})</div>
+            </div>
+        `;
+
+        this.tableBody.innerHTML = `
+            <tr>
+                <td colspan="2"><strong>Movement Steps Executed</strong></td>
+                <td colspan="5"><span class="mono">${telemetry.stepCount} tiles (${telemetry.totalDurationMs} ms total)</span></td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Animation Frame Rate</strong></td>
+                <td colspan="5"><span class="mono text-emerald font-bold">${telemetry.avgFps} FPS</span> (1% Low / Min: ${telemetry.minFps} FPS)</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Frame Render Latencies</strong></td>
+                <td colspan="5"><span class="mono">Mean: ${telemetry.avgFrameTimeMs}ms | p95: ${telemetry.p95FrameTimeMs}ms | p99: ${telemetry.p99FrameTimeMs}ms | Spike: ${telemetry.maxFrameTimeMs}ms</span></td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Jank / Dropped Frames (&gt;20ms)</strong></td>
+                <td colspan="5"><span class="mono ${telemetry.jankFramesCount > 0 ? 'text-amber font-bold' : 'text-emerald'}">${telemetry.jankFramesCount} frames (${telemetry.jankFrameRatePct}% rate)</span> | Heavy (&gt;33ms): ${telemetry.heavyJankCount}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>updateGrid Latency (Sync Pause)</strong></td>
+                <td colspan="5"><span class="mono text-purple font-bold">${telemetry.avgUpdateGridMs} ms / call</span> (Max: ${telemetry.maxUpdateGridMs} ms across ${telemetry.updateGridCalls} calls)</td>
+            </tr>
+            <tr>
+                <td colspan="2"><strong>Total SVG DOM Elements in #frame</strong></td>
+                <td colspan="5"><span class="mono font-bold">${telemetry.totalSvgElements.toLocaleString()} nodes</span></td>
+            </tr>
+        `;
+
+        var md = `### Walk Animation & Jitter Performance Benchmark Report
+| Metric | Telemetry Value | Assessment / Target |
+| :--- | :--- | :--- |
+| **Average Frame Rate** | **${telemetry.avgFps} FPS** | Target: >= 58.0 FPS (Smooth 60Hz) |
+| **Minimum FPS (1% Low)** | **${telemetry.minFps} FPS** | Below 30 FPS indicates visible stutter |
+| **Average Frame Latency** | **${telemetry.avgFrameTimeMs} ms** | 60 FPS frame budget is <= 16.6 ms |
+| **95th Percentile Latency**| **${telemetry.p95FrameTimeMs} ms** | Steady-state animation budget |
+| **Maximum Frame Spike** | **${telemetry.maxFrameTimeMs} ms** | Primary cause of movement jitter |
+| **Jank Frames (>20ms)** | **${telemetry.jankFramesCount} (${telemetry.jankFrameRatePct}%)** | Lower is smoother (0% ideal) |
+| **Heavy Jank (>33ms)** | **${telemetry.heavyJankCount}** | Target: 0 dropped frames |
+| **updateGrid Latency** | **${telemetry.avgUpdateGridMs} ms** (Max: ${telemetry.maxUpdateGridMs} ms) | DOM mutation cost per step |
+| **Total SVG DOM Nodes** | **${telemetry.totalSvgElements.toLocaleString()} elements** | Total active nodes in #frame |
+`;
+        window.__lastWalkBenchmarkReport = md;
+    }
+
     async handleCopy() {
+        if (this.lastMode === 'walk' && window.__lastWalkBenchmarkReport) {
+            try {
+                await navigator.clipboard.writeText(window.__lastWalkBenchmarkReport);
+                this.statusEl.textContent = "📋 Walk report copied to clipboard!";
+                setTimeout(() => {
+                    this.statusEl.textContent = "Ready";
+                }, 2500);
+            } catch (err) {
+                console.warn("Clipboard restricted:", err);
+                console.log(window.__lastWalkBenchmarkReport);
+                this.statusEl.textContent = "Exported walk report to console";
+            }
+            return;
+        }
+
         if (!this.lastResults && !this.benchmark.lastComparison) {
             this.statusEl.textContent = "Please run benchmark before copying report";
             return;
@@ -536,25 +646,213 @@ class BenchmarkUIController {
             this.statusEl.textContent = "Please run benchmark before exporting JSON";
             return;
         }
-        var jsonStr = this.benchmark.generateJSON(this.lastResults);
+        var jsonStr = (this.lastMode === 'walk')
+            ? JSON.stringify(this.lastResults, null, 2)
+            : this.benchmark.generateJSON(this.lastResults);
         var blob = new Blob([jsonStr], { type: "application/json" });
         var url = URL.createObjectURL(blob);
         var a = document.createElement("a");
         a.href = url;
-        a.download = `pathfinder_benchmark_${Date.now()}.json`;
+        a.download = `${this.lastMode === 'walk' ? 'walk_animation' : 'pathfinder'}_benchmark_${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
         this.statusEl.textContent = "💾 Exported benchmark JSON file";
     }
 }
 
+/**
+ * Walk Animation Benchmark Engine
+ * High-resolution frame-by-frame telemetry harness measuring real-time FPS, frame latency,
+ * max frame spike (jitter), updateGrid sync pause, and total DOM elements.
+ */
+class WalkAnimationBenchmark {
+    constructor() {
+        this.isRunning = false;
+        this.results = null;
+    }
+
+    findValidWalkPath(stepCount = 10) {
+        if (typeof agent === 'undefined' || !agent || typeof globalMapObject === 'undefined' || !globalMapObject.map_cells) return null;
+        var curX = agent.x;
+        var curY = agent.y;
+        var path = [];
+        var visited = new Set();
+        visited.add(`${curX},${curY}`);
+
+        var cx = curX;
+        var cy = curY;
+        var candidateDirs = [
+            [1, 0], [1, 1], [1, -1], [0, 1], [0, -1], [-1, 0], [-1, 1], [-1, -1]
+        ];
+
+        var prev = (globalMapObject.map_cells[cx] && globalMapObject.map_cells[cx][cy]) ? globalMapObject.map_cells[cx][cy] : null;
+        for (var s = 0; s < stepCount; s++) {
+            var next = null;
+            for (var d of candidateDirs) {
+                var nx = cx + d[0];
+                var ny = cy + d[1];
+                var key = `${nx},${ny}`;
+                if (globalMapObject.map_cells[nx] && globalMapObject.map_cells[nx][ny]) {
+                    var cell = globalMapObject.map_cells[nx][ny];
+                    if (!cell.isBlockedType() && !visited.has(key)) {
+                        next = cell;
+                        visited.add(key);
+                        cx = nx;
+                        cy = ny;
+                        break;
+                    }
+                }
+            }
+            if (!next) break;
+            if (prev && typeof stepOption !== 'undefined') {
+                path.push(new stepOption(prev, next));
+            } else if (prev) {
+                path.push({ stepOptionFromCell: prev, stepOptionToCell: next });
+            }
+            prev = next;
+        }
+        return path;
+    }
+
+    async runWalkBenchmark(stepCount = 10) {
+        if (this.isRunning) return null;
+        this.isRunning = true;
+
+        if (typeof AgentBridge !== 'undefined') {
+            AgentBridge.teleport(0, 0);
+        }
+
+        await new Promise(r => setTimeout(r, 150));
+
+        var path = this.findValidWalkPath(stepCount);
+        if (!path || path.length < 3) {
+            this.isRunning = false;
+            throw new Error("Could not find a valid walkable path of at least 3 steps.");
+        }
+
+        var totalSvgElements = 0;
+        var frameEl = document.getElementById("frame");
+        if (frameEl) {
+            totalSvgElements = frameEl.getElementsByTagName("*").length;
+        }
+
+        var frameTimestamps = [];
+        var frameDeltas = [];
+        var updateGridTimes = [];
+        var originalUpdateGrid = globalGridObject.updateGrid;
+
+        globalGridObject.updateGrid = function (...args) {
+            var t0 = performance.now();
+            var res = originalUpdateGrid.apply(this, args);
+            var t1 = performance.now();
+            updateGridTimes.push(t1 - t0);
+            return res;
+        };
+
+        var isMonitoring = true;
+        var lastRafTime = performance.now();
+
+        function monitorFrames(now) {
+            if (!isMonitoring) return;
+            var delta = now - lastRafTime;
+            lastRafTime = now;
+            frameTimestamps.push(now);
+            if (delta > 0 && delta < 1000) {
+                frameDeltas.push(delta);
+            }
+            requestAnimationFrame(monitorFrames);
+        }
+
+        var monId = requestAnimationFrame(monitorFrames);
+        var walkStart = performance.now();
+
+        await new Promise((resolve) => {
+            agent.onWalkComplete = () => {
+                resolve();
+            };
+            agent.walkPath([...path]);
+        });
+
+        var walkEnd = performance.now();
+        isMonitoring = false;
+        cancelAnimationFrame(monId);
+
+        globalGridObject.updateGrid = originalUpdateGrid;
+        this.isRunning = false;
+
+        var totalWalkTime = walkEnd - walkStart;
+        var validDeltas = frameDeltas.slice(1);
+        var totalFrames = validDeltas.length;
+
+        var avgFrameTime = validDeltas.length > 0 ? (validDeltas.reduce((a, b) => a + b, 0) / validDeltas.length) : 16.6;
+        var maxFrameTime = validDeltas.length > 0 ? Math.max(...validDeltas) : 16.6;
+        var minFrameTime = validDeltas.length > 0 ? Math.min(...validDeltas) : 16.6;
+
+        var sortedDeltas = [...validDeltas].sort((a, b) => a - b);
+        var p95 = sortedDeltas[Math.floor(sortedDeltas.length * 0.95)] || maxFrameTime;
+        var p99 = sortedDeltas[Math.floor(sortedDeltas.length * 0.99)] || maxFrameTime;
+
+        var jankFrames = validDeltas.filter(d => d > 20.0).length;
+        var heavyJankFrames = validDeltas.filter(d => d > 33.3).length;
+
+        var avgFps = totalFrames / (totalWalkTime / 1000);
+        var minFps = maxFrameTime > 0 ? (1000 / maxFrameTime) : avgFps;
+        var avgUpdateGridTime = updateGridTimes.length > 0 ? (updateGridTimes.reduce((a, b) => a + b, 0) / updateGridTimes.length) : 0;
+        var maxUpdateGridTime = updateGridTimes.length > 0 ? Math.max(...updateGridTimes) : 0;
+
+        var telemetry = {
+            stepCount: path.length,
+            totalDurationMs: Number(totalWalkTime.toFixed(1)),
+            totalSvgElements: totalSvgElements,
+            totalFrames: totalFrames,
+            avgFps: Number(avgFps.toFixed(1)),
+            minFps: Number(minFps.toFixed(1)),
+            avgFrameTimeMs: Number(avgFrameTime.toFixed(2)),
+            p95FrameTimeMs: Number(p95.toFixed(2)),
+            p99FrameTimeMs: Number(p99.toFixed(2)),
+            maxFrameTimeMs: Number(maxFrameTime.toFixed(2)),
+            jankFramesCount: jankFrames,
+            jankFrameRatePct: Number(((jankFrames / (totalFrames || 1)) * 100).toFixed(1)),
+            heavyJankCount: heavyJankFrames,
+            updateGridCalls: updateGridTimes.length,
+            avgUpdateGridMs: Number(avgUpdateGridTime.toFixed(2)),
+            maxUpdateGridMs: Number(maxUpdateGridTime.toFixed(2)),
+            timestamp: new Date().toISOString()
+        };
+
+        this.results = telemetry;
+        window.__lastWalkBenchmark = telemetry;
+        console.log("[WalkAnimationBenchmark] Telemetry:", telemetry);
+        return telemetry;
+    }
+}
+
 // Global initialization on window load
 var globalBenchmarkInstance = null;
 var globalBenchmarkUI = null;
+var globalWalkBenchmark = new WalkAnimationBenchmark();
 
-window.addEventListener("load", function () {
-    setTimeout(function () {
-        globalBenchmarkInstance = new PathfinderBenchmark();
-        globalBenchmarkUI = new BenchmarkUIController(globalBenchmarkInstance);
-    }, 100);
-});
+if (typeof window !== 'undefined') {
+    window.globalWalkBenchmark = globalWalkBenchmark;
+    window.runWalkBenchmark = (steps = 10) => globalWalkBenchmark.runWalkBenchmark(steps);
+}
+
+if (typeof EventTrait !== 'undefined') {
+    EventTrait.onLoad(function () {
+        setTimeout(function () {
+            globalBenchmarkInstance = new PathfinderBenchmark();
+            globalBenchmarkUI = new BenchmarkUIController(globalBenchmarkInstance);
+        }, 100);
+    });
+} else if (typeof window !== 'undefined') {
+    window.addEventListener("load", function () {
+        setTimeout(function () {
+            globalBenchmarkInstance = new PathfinderBenchmark();
+            globalBenchmarkUI = new BenchmarkUIController(globalBenchmarkInstance);
+        }, 100);
+    });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PathfinderBenchmark, BenchmarkUIController, WalkAnimationBenchmark };
+}
