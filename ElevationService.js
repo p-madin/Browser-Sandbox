@@ -6,6 +6,16 @@
 
 class ElevationService {
     /**
+     * Authoritative mountain massif geological centers and clearance envelopes.
+     */
+    static mountainRidges = [
+        { cx: -65, cy: -60, radius: 18, peakRadius: 8, name: "Northwest Highlands" },
+        { cx: 60, cy: -55, radius: 17, peakRadius: 7, name: "Northeast Crags" },
+        { cx: -60, cy: 55, radius: 18, peakRadius: 8, name: "Southwest Bluffs" },
+        { cx: 25, cy: 75, radius: 16, peakRadius: 7, name: "Southern Ridge" }
+    ];
+
+    /**
      * Procedurally generates elevation tiers across the world map.
      * @param {mapObject} map 
      * @param {Object} options 
@@ -18,12 +28,7 @@ class ElevationService {
         const modifiedCells = [];
 
         // 1. Highland and Mountain geological centers
-        const ridges = [
-            { cx: -45, cy: -45, radius: 22, peakRadius: 10 }, // Northwest highlands
-            { cx: 45, cy: -35, radius: 18, peakRadius: 8 },   // Northeast crags
-            { cx: -40, cy: 40, radius: 20, peakRadius: 9 },   // Southwest bluffs
-            { cx: 50, cy: 45, radius: 16, peakRadius: 7 }     // Southeast plateau
-        ];
+        const ridges = ElevationService.mountainRidges;
 
         // 2. Assign elevation tiers
         for (let x = map.min_width; x < map.max_width; x++) {
@@ -31,8 +36,8 @@ class ElevationService {
                 const cell = map.map_cells[x] && map.map_cells[x][y];
                 if (!cell) continue;
 
-                // Water cells are always sea/river level h = 0
-                if (cell.hasFlag(CellFlags.WATER)) {
+                // Water and chasm cells are strictly sea/river level h = 0
+                if (cell.hasFlag(CellFlags.WATER) || cell.hasFlag(CellFlags.WATER_SHALLOW) || cell.hasFlag(CellFlags.CHASM)) {
                     cell.elevation = 0;
                     count0++;
                     modifiedCells.push(cell);
@@ -58,6 +63,24 @@ class ElevationService {
                         break;
                     } else if (dist < r.radius + jitter) {
                         if (elev < 2) elev = 2; // Highland plateaus
+                    }
+                }
+
+                // Macro-Geomorphic Invariant: Mountains and highlands (elev >= 2) must NEVER
+                // overlap or border water or chasms within a 6-tile safety clearance buffer.
+                if (elev >= 2) {
+                    let nearWaterOrChasm = false;
+                    for (let dx = -6; dx <= 6 && !nearWaterOrChasm; dx++) {
+                        for (let dy = -6; dy <= 6 && !nearWaterOrChasm; dy++) {
+                            if (dx * dx + dy * dy > 36) continue;
+                            const nc = map.map_cells[x + dx] && map.map_cells[x + dx][y + dy];
+                            if (nc && (nc.hasFlag(CellFlags.WATER) || nc.hasFlag(CellFlags.WATER_SHALLOW) || nc.hasFlag(CellFlags.CHASM))) {
+                                nearWaterOrChasm = true;
+                            }
+                        }
+                    }
+                    if (nearWaterOrChasm) {
+                        elev = 1; // Clamp to lowland floodplain meadow
                     }
                 }
 

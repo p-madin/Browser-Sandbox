@@ -61,6 +61,34 @@ class CanyonGenerator {
                         continue;
                     }
 
+                    // Macro-Geomorphic Invariant 1: Never carve chasm into or within 8 tiles of water
+                    if (cell.hasFlag(CellFlags.WATER) || cell.hasFlag(CellFlags.WATER_SHALLOW)) {
+                        continue;
+                    }
+                    let nearWater = false;
+                    for (let cdx = -8; cdx <= 8 && !nearWater; cdx++) {
+                        for (let cdy = -8; cdy <= 8 && !nearWater; cdy++) {
+                            if (cdx * cdx + cdy * cdy > 64) continue;
+                            const nc = map.map_cells[tx + cdx] && map.map_cells[tx + cdx][ty + cdy];
+                            if (nc && (nc.hasFlag(CellFlags.WATER) || nc.hasFlag(CellFlags.WATER_SHALLOW))) {
+                                nearWater = true;
+                            }
+                        }
+                    }
+                    if (nearWater) continue;
+
+                    // Macro-Geomorphic Invariant 2: Never carve chasm into or within 8 tiles of mountain massifs
+                    if (cell.elevation >= 2) continue;
+                    const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
+                    let nearMountain = false;
+                    for (const r of ridges) {
+                        if (Math.hypot(tx - r.cx, ty - r.cy) < r.radius + 8) {
+                            nearMountain = true;
+                            break;
+                        }
+                    }
+                    if (nearMountain) continue;
+
                     const key = `${tx},${ty}`;
                     if (visitedKeys.has(key)) continue;
                     visitedKeys.add(key);
@@ -68,6 +96,7 @@ class CanyonGenerator {
                     // Central fissure is bottomless CHASM
                     cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
                     cell.addFlag(CellFlags.CHASM);
+                    cell.elevation = 0;
                     chasmCells.push(cell);
                     modifiedCells.push(cell);
 
@@ -140,21 +169,21 @@ class CanyonGenerator {
         console.log("[CanyonGenerator] Carving rugged tectonic chasms and suspension crossings...");
         const allModified = [];
 
-        // 1. Primary East Ridge Chasm: Jagged gorge in eastern territory
+        // 1. Eastern Arid Rift: Fault line running North-South in eastern flat lowlands
         const canyon1 = this.carveFaultLine(
             map,
-            { x: 30, y: -55 },
-            { x: 65, y: -15 },
-            { width: 2, bridgeInterval: 22 }
+            { x: 82, y: -25 },
+            { x: 82, y: 25 },
+            { width: 2, bridgeInterval: 25 }
         );
         allModified.push(...canyon1);
 
-        // 2. Southwest Fissure: Defile in southwest bluffs
+        // 2. Western Defile: Fault line running East-West in western flat lowlands
         const canyon2 = this.carveFaultLine(
             map,
-            { x: -55, y: 35 },
-            { x: -25, y: 65 },
-            { width: 2, bridgeInterval: 20 }
+            { x: -82, y: -5 },
+            { x: -50, y: -5 },
+            { width: 2, bridgeInterval: 18 }
         );
         allModified.push(...canyon2);
 

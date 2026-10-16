@@ -204,10 +204,13 @@ class cell_meta {
     isBlockedType() {
         // Closed doors, barricades, and structural walls are impassable barriers
         if (this.flags & (CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_WALL)) return true;
+        // Strict water crossing invariant: Water is strictly impassable unless covered by an engineered bridge deck
+        if (this.flags & CellFlags.WATER) {
+            return (this.flags & CellFlags.STRUCTURE_BRIDGE) === 0;
+        }
         // Paths, bridges, ramps, and interior floors are always passable
         if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_FLOOR)) return false;
-        if (this.flags & CellFlags.WATER_SHALLOW) return false;
-        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.WATER | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM)) !== 0;
+        return (this.flags & (CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM)) !== 0;
     }
 
     // --- Compatibility Methods ---

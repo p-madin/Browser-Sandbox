@@ -1,11 +1,12 @@
-# Project Roadmap: Collision Resolution, Layer Precedence & Structural Integrity
+# Project Roadmap: Macro-Geomorphic Clearance & River Crossing Integrity
 
-This roadmap outlines the engineering strategy to resolve cell-level and structure-level collisions, layer precedence overrides, visual CSS cascade masking, bridge-gap spanning, and foundation elevation leveling across the Grid Engine world.
+This roadmap establishes the architectural specifications to resolve macro-geomorphic landform collisions (eliminating all intersections between canyons, rivers, and mountains) and enforces the physical rule that any path crossing a watercourse must traverse an engineered bridge.
 
 > [!NOTE]
 > - **Roadmap 1 (Engine Core)**: Archival reference in [Documentation/roadmap1.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/Documentation/roadmap1.md) (Viewport, Lerping, Vector Heading, Benchmarking, Modular A*, Bitmask Model).  
 > - **Roadmap 2 (Structural Architecture)**: Archival reference in [Documentation/roadmap2.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/Documentation/roadmap2.md) (Blueprints, Procedural Placer, Interactive Doors/Barricades, Roof Cutaways).  
 > - **Roadmap 3 (Terrain & Hydrology)**: Archival reference in [Documentation/roadmap3.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/Documentation/roadmap3.md) (Rivers, Lakes, Elevation Tiers, Chasms, Bridges, Riparian Ecology).  
+> - **Roadmap 4 (Collision Resolution & Layer Precedence)**: Archival reference in [Documentation/roadmap4.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/Documentation/roadmap4.md) (Cell flag hierarchy, CSS specificity cascades, seed-deterministic retries).  
 > - Experimental concepts remain tracked in [sandbox.md](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/sandbox.md).
 
 ---
@@ -14,233 +15,213 @@ This roadmap outlines the engineering strategy to resolve cell-level and structu
 
 | Phase | Milestone | Priority | Status | Target Release |
 | :--- | :--- | :---: | :---: | :---: |
-| **Phase 1** | **Cell State Precedence & CSS Visual Hierarchy** | `P1 - High` | ✅ Completed | v5.0 |
-| **Phase 2** | **Structure-Terrain Clearance & Placement Validation** | `P1 - High` | ✅ Completed | v5.1 |
-| **Phase 3** | **Foundation Leveling & Elevation Topographic Integrity** | `P2 - Medium` | ✅ Completed | v5.2 |
-| **Phase 4** | **Engineered Bridge Spanning & Abutment Alignment** | `P2 - Medium` | ✅ Completed | v5.3 |
-| **Phase 5** | **Collision Regression Suite & End-to-End Validation** | `P3 - Low` | ✅ Completed | v5.4 |
+| **Phase 1** | **Hydrology & Orogeny Separation (Rivers vs Mountains)** | `P1 - High` | ✅ Completed | v6.0 |
+| **Phase 2** | **Tectonic Fault Line Isolation (Canyons vs Rivers & Mountains)** | `P1 - High` | ✅ Completed | v6.1 |
+| **Phase 3** | **Trail-River Bridge Synthesis & Mandatory Crossing Spans** | `P1 - High` | ✅ Completed | v6.2 |
+| **Phase 4** | **Kinematic Passability Invariants & Strict Water Blocking** | `P2 - Medium` | ✅ Completed | v6.3 |
+| **Phase 5** | **Geomorphic Clearance Benchmark & Topological Verification** | `P2 - Medium` | ✅ Completed | v6.4 |
 
 ---
 
 ## Technical Specifications & Phase Breakdown
 
-### Phase 1: Cell State Precedence & CSS Visual Hierarchy
+### Phase 1: Hydrology & Orogeny Separation (Rivers vs Mountains)
 * **Status**: ✅ Completed
+* **Goal**: Guarantee that river channels, tributaries, and lakes never overlap, intersect, or slice through elevated mountain massifs ($h \ge 2$).
 
 #### Problem Statement & Root Cause
-1. **Structure Floor vs Water Contradiction (`cell structure_floor elev_0 water`)**:
-   - When a structure blueprint is stamped on or near water, cells acquire both `STRUCTURE_FLOOR` and `WATER` flags.
-   - In [cell.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/cell.js), `isBlockedType()` checks `WATER` as blocked unless marked as `STRUCTURE_PATH` or `STRUCTURE_BRIDGE`. Because `STRUCTURE_FLOOR` is omitted from this exemption list, interior building floors over water become impassable barriers!
-   - Visually, the cell receives both `.structure_floor` and `.water`, creating conflicting styles where water styling or elevation $0$ overrides or muddies the interior floor.
-2. **Pathfinding & Selection Highlighting Masked by Cascade Order**:
-   - In [styles.css](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/styles.css), highlighting classes (`.cell.selected`, `.cell.path_step`, `.cell.selectedDestination`) are declared early (lines 48–60).
-   - Subsequent terrain, hydrology, and structural rules (`.cell.water`, `.cell.structure_floor`, `.cell.structure_bridge`, `.cell.elev_2`, `.cell.elev_3`, `.cell.chasm`) are defined lower in the stylesheet with identical CSS specificity (`0-1-0` or `0-2-0`).
-   - By standard CSS cascade rules, the later rules override the earlier highlight fills. Consequently, clicking on water, bridges, paths, highlands, or structure floors fails to display destination beacons or path step trails!
-3. **Other Cell-Level Collisions Reviewed**:
-   - `TREE` inside `WATER`: Trees randomly generated on river basins or lakeshores.
-   - `BLOCKED` rocks inside `STRUCTURE_PATH` or `STRUCTURE_FLOOR`.
-   - `TERRAIN_CLIFF` applied to `STRUCTURE_BRIDGE`: Bridge decks erroneously tagged with cliff boundaries, creating confusing conflicting visuals.
-   - `CHASM` beneath `STRUCTURE_FLOOR`: Buildings floating over bottomless chasms.
+1. **Blind River Routing Through Highland Ridges**:
+   - In [RiverGenerator.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/RiverGenerator.js), the primary river flows from $(-75, -70)$ to $(75, 65)$, cutting straight through the northwest quadrant.
+   - In [ElevationService.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/ElevationService.js), mountain ridges are centered at fixed coordinates:
+     - Northwest Highlands: centered at $(-45, -45)$ with radius $22$ and peak radius $10$ ($h=3$).
+     - Southeast Plateau: centered at $(50, 45)$ with radius $16$ and peak radius $7$ ($h=3$).
+   - Because [RiverGenerator.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/RiverGenerator.js) runs before [ElevationService.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/ElevationService.js), water cells are carved first, and `ElevationService` then forces water cells to elevation $0$ while surrounding them with elevation $3$ mountain crags.
+   - This creates an unnatural, sheer vertical trench where water cuts directly through mountain summits.
 
 #### Architectural Solutions
-1. **Explicit Flag Override & Sanitization Rules**:
-   - Establish an authoritative state hierarchy during cell mutation:
-     $$\text{STRUCTURE\_FLOOR} \succ \text{STRUCTURE\_WALL} \succ \text{STRUCTURE\_PATH} \succ \text{TERRAIN (WATER, TREE, BLOCKED, CHASM)}$$
-   - When `STRUCTURE_FLOOR` or `STRUCTURE_WALL` is applied to a cell:
-     - Automatically purge `WATER`, `WATER_SHALLOW`, `TREE`, `BLOCKED`, `CHASM`, and `TERRAIN_CLIFF`.
-     - Elevate cell elevation to the structure's dry foundation grade ($h \ge 1$).
-   - Update `cell_meta.isBlockedType()` to ensure `STRUCTURE_FLOOR` guarantees interior passability.
-2. **CSS Specificity & Layered Visual Order Overhaul**:
-   - Restructure [styles.css](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/styles.css) into distinct rendering layers using higher specificity selectors:
-     ```css
-     /* Layer 1: Base Terrain & Elevation Tiers */
-     .cell { ... }
-     .cell.elev_0, .cell.elev_2, .cell.elev_3 { ... }
-     .cell.water, .cell.water_shallow { ... }
-     .cell.chasm, .cell.cliff { ... }
+1. **Disjoint Territory Allocation & Valley Corridors**:
+   - Establish non-overlapping geographic domains for mountain massifs and river valleys:
+     - Relocate mountain geological centers to dedicated quadrants outside the hydrological floodplain (e.g. Northwest crags shifted to $(-60, 20)$ or $(-20, -60)$ with a safety boundary).
+     - Maintain a minimum Euclidean clearance buffer ($d_{\text{min}} \ge 8$ tiles) between any water cell ($h=0$) and any highland/mountain ridge ($h \ge 2$).
+2. **Deflection-Steered River Raycasting**:
+   - When [RiverGenerator.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/RiverGenerator.js) traces its meander, query a repulsive potential vector field generated by mountain centers:
+     $$\vec{F}_{\text{deflect}} = \sum_{r \in \text{Ridges}} \frac{\vec{x} - \vec{c}_r}{\|\vec{x} - \vec{c}_r\|^3}$$
+   - Rivers naturally steer around highlands, flowing through flat lowland valleys ($h=1$).
+3. **Topographic Clamping Invariant**:
+   - In [ElevationService.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/ElevationService.js), any cell within the hydrological corridor ($d(\text{water}) \le 6$) is strictly clamped to lowland meadow grade ($h=1$). Mountains are never permitted to generate within river channels.
 
-     /* Layer 2: Biome Vegetation & Natural Obstacles */
-     .cell.grass { ... }
-     .cell.tree { ... }
-     .cell.flora { ... }
+---
 
-     /* Layer 3: Built Infrastructure & Architecture */
-     .cell.structure_floor { ... }
-     .cell.structure_path { ... }
-     .cell.structure_bridge { ... }
-     .cell.structure_wall { ... }
-     .cell.structure_door { ... }
+### Phase 2: Tectonic Fault Line Isolation (Canyons vs Rivers & Mountains)
+* **Status**: ✅ Completed
+* **Goal**: Ensure tectonic fault lines (chasms) never intersect, enter, or bisect rivers, lakes, or mountain massifs.
 
-     /* Layer 4: Interactive Selection & Navigation Overlays (Highest Priority) */
-     #frame .cell.selected,
-     #frame .cell.selected.path_step {
-         fill: rgba(74, 222, 128, 0.75) !important;
-         stroke: #16a34a !important;
-     }
-     #frame .cell.path_step {
-         fill: rgba(239, 68, 68, 0.85) !important;
-         stroke: #dc2626 !important;
-     }
-     #frame .cell.selectedDestination {
-         fill: rgba(56, 189, 248, 0.9) !important;
-         stroke: #0284c7 !important;
-         stroke-width: 1.5px !important;
+#### Problem Statement & Root Cause
+1. **Fault Lines Slicing Across Mountain Ridges**:
+   - In [CanyonGenerator.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/CanyonGenerator.js), Canyon 1 is carved from $(30, -55)$ to $(65, -15)$. The Northeast mountain ridge is centered at $(45, -35)$ with radius $18$. The canyon slices directly through the center of the Northeast crags.
+   - Canyon 2 is carved from $(-55, 35)$ to $(-25, 65)$, slicing through the Southwest bluffs centered at $(-40, 40)$.
+2. **Chasms Bisecting Hydrology Without Water Safety Checks**:
+   - In `CanyonGenerator.carveFaultLine()`, line 59 checks `STRUCTURE_WALL` and `STRUCTURE_FLOOR`, but fails to check `CellFlags.WATER`!
+   - As a result, a chasm can overwrite river tiles, creating illegal `WATER + CHASM` hybrid cells where river water vanishes into bottomless abysses without hydrological continuity.
+
+#### Architectural Solutions
+1. **Arid Rift Valley Relocation**:
+   - Relocate canyon fracture lines to dedicated arid rift corridors positioned well away from both mountains and rivers (e.g. eastern lowlands and south-central plains).
+2. **Strict Exclusion Masking During Fault Carving**:
+   - Before applying `CellFlags.CHASM` to any cell:
+     - If the cell or any neighbor within radius $r = 6$ contains `WATER` or `WATER_SHALLOW`, abort that step or deflect the fracture away.
+     - If the cell or any neighbor contains elevation $h \ge 2$ (mountain/highland), deflect or terminate the fault line.
+   - Formal Set Invariant:
+     $$\forall c \in \text{MapCells}: c.\text{hasFlag}(\text{CHASM}) \implies \neg c.\text{hasFlag}(\text{WATER}) \land (c.\text{elevation} \le 1)$$
+3. **No Mixed State Contradictions**:
+   - `CHASM` cells are strictly forbidden from having `WATER`, and `WATER` cells are strictly forbidden from having `CHASM`.
+
+---
+
+### Phase 3: Trail-River Bridge Synthesis & Mandatory Crossing Spans
+* **Status**: ✅ Completed
+* **Goal**: Guarantee that any path, trail, or road crossing a river must do so exclusively via an engineered bridge spanning from shore to shore.
+
+#### Problem Statement & Root Cause
+1. **Disjointed Diagonal Trail Steps Across Water**:
+   - In [WorldStructurePlacer.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/WorldStructurePlacer.js), `carveTrail()` previously walked diagonally across river channels, stamping `STRUCTURE_PATH` and isolated `STRUCTURE_BRIDGE` on random individual tiles without spanning the full width of the river.
+2. **Bare Trail Cells Walking on Water**:
+   - If a trail steps into water without triggering a full bridge span, bare `STRUCTURE_PATH` tiles sit directly on `WATER`, giving the visual appearance of a gravel path running underwater.
+3. **Lack of Bridge Prefab Attachment**:
+   - Paths connect between structure doorways using Bresenham stepping rather than seeking out existing bridge locations or synthesizing engineered bridge structures.
+
+#### Architectural Solutions
+1. **Bridge-Aware Path Routing**:
+   - In [WorldStructurePlacer.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/WorldStructurePlacer.js), when `carveTrail(map, from, to)` plans a route:
+     - Step 1: Detect if a direct line intersects water.
+     - Step 2: If an existing bridge exists within reasonable distance, route the path through the existing bridge's abutments.
+     - Step 3: If no bridge exists, invoke [BridgePlacer.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/BridgePlacer.js) to construct a new, fully engineered shore-to-shore bridge across the river channel at the crossing coordinate.
+2. **Full-Span Guarantee**:
+   - Every river crossing must possess:
+     - Solid ground abutments on both Shore A and Shore B (`STRUCTURE_PATH` on dry land).
+     - Continuous unbroken bridge deck cells spanning 100% of the water gap (`STRUCTURE_BRIDGE | STRUCTURE_PATH`).
+     - Parallel guide rails (`STRUCTURE_WALL`) on the open water flanks.
+     - Elimination of bare `STRUCTURE_PATH` on water.
+
+---
+
+### Phase 4: Kinematic Passability Invariants & Strict Water Blocking
+* **Status**: ✅ Completed
+* **Goal**: Enforce engine-level passability rules ensuring that agents and pathfinders cannot enter river water under any circumstances unless walking on a bridge deck.
+
+#### Problem Statement & Root Cause
+1. **Permissive Water Passability in `cell.isBlockedType()`**:
+   - In [cell.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/cell.js) line 208:
+     ```javascript
+     if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_FLOOR)) return false;
+     ```
+   - If a cell has `CellFlags.WATER` and `CellFlags.STRUCTURE_PATH` (without `STRUCTURE_BRIDGE`), `isBlockedType()` returns `false` (passable)!
+   - Furthermore, line 209:
+     ```javascript
+     if (this.flags & CellFlags.WATER_SHALLOW) return false;
+     ```
+     allows agents to wade through shallow water without any bridge or path.
+
+#### Architectural Solutions
+1. **Strict Water Blocking Contract in `cell.isBlockedType()`**:
+   - Water is strictly impassable unless covered by an engineered bridge deck:
+     ```javascript
+     // Strict water blocking rule:
+     if (this.flags & CellFlags.WATER) {
+         // Only passable if an engineered bridge deck is present
+         return (this.flags & CellFlags.STRUCTURE_BRIDGE) === 0;
      }
      ```
-   - Guarantees navigation beacons and path trails are 100% visible across every tile type in the engine.
+   - Having `STRUCTURE_PATH` alone on a `WATER` tile will NOT make it passable; `STRUCTURE_BRIDGE` is mandatory.
+2. **Shallow Water Regulation**:
+   - Disallow bare shallow water from being traversed along engineered roads: paths cannot treat shallow water as a bypass for a bridge.
+3. **Neighbor Passability Graph Recalculation**:
+   - Whenever a bridge is placed or modified, trigger `determineNeighboursPassable()` across the bridge deck and adjacent shorelines to ensure the navmesh accurately reflects bridge-only water traversal.
 
 ---
 
-### Phase 2: Structure-Terrain Clearance & Placement Validation
+### Phase 5: Geomorphic Clearance Benchmark & Topological Verification
 * **Status**: ✅ Completed
+* **Goal**: Validate that all terrain and path collisions are 100% resolved via automated regression tests and interactive browser validation.
 
-#### Problem Statement & Root Cause
-1. **Structures Stamping Over Terrain Landforms**:
-   - In [StructureStamper.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/StructureStamper.js), `canPlace()` only checked collisions against existing `STRUCTURE_WALL` and `STRUCTURE_FLOOR`.
-   - It did **not** check for `WATER`, `CHASM`, or steep `TERRAIN_CLIFF` drop-offs.
-   - Consequently, procedural generators ([WorldStructurePlacer.js](file:///c:/Workspace/HTML%20Workspace/Browser-Sandbox/WorldStructurePlacer.js)) frequently placed dryland buildings (woodland cabins, lumber camps, watchtowers, BSP catacombs) halfway submerged in rivers or bisected by chasms.
-2. **Terrain Landforms Carving Through Structures**:
-   - `RiverGenerator` and `CanyonGenerator` ran checks against some structure flags, but if placement occurred in variable order or near perimeter footprints, geological fissures could sever buildings.
-3. **Other Structure-Level Collisions Reviewed**:
-   - Doorway obstruction: Structure entry doors opening directly into water bodies, cliff walls, or dense tree trunks.
-   - Trail bisection: Newly placed structures bulldozing established trails without creating bypasses or connecting doorways.
-
-#### Architectural Solutions
-1. **Category-Aware Placement Constraints in `StructureStamper.canPlace()`**:
-   - Extend `canPlace(map, blueprint, originX, originY)` to evaluate terrain fitness based on blueprint category and tags:
-     - **Dry Terrestrial Buildings** (`cabin`, `camp`, `outpost`, `ruins`, `dungeon`):
-       - Must have $0\%$ overlap with `CellFlags.WATER` and `CellFlags.CHASM`.
-       - Must have a flat uniform elevation grade across the footprint ($\Delta h = 0$).
-       - Doorway coordinate must open onto dry, unblocked land with at least 1 tile clearance.
-     - **Waterfront Structures** (`watermill`, `fishing_pier`):
-       - Specifically require land on the entrance side and water on the active side (paddlewheel / pier head).
-     - **Infrastructure & Bridges** (`bridge`, `ramp`):
-       - Specifically permitted over water or chasm cells when anchored to land shores.
-2. **Strict Procedural Pipeline Ordering & Exclusion Buffers**:
-   - Geological landforms (hydrology, heightmap, canyons) establish the natural world first.
-   - Structure placers query both structural and geological mask layers before committing footprints.
-   - Doorway clearance verification ensures every structure has an unblocked, navigable egress threshold.
+#### Deliverables & Test Cases
+1. **Automated Geomorphic Collision Battery (`benchmark.js`)**:
+   - **Test Case: River-Mountain Clearance**:
+     $$\sum_{c \in \text{Map}} [c.\text{hasFlag}(\text{WATER}) \land c.\text{elevation} \ge 2] == 0$$
+   - **Test Case: River-Canyon Disjointness**:
+     $$\sum_{c \in \text{Map}} [c.\text{hasFlag}(\text{WATER}) \land c.\text{hasFlag}(\text{CHASM})] == 0$$
+   - **Test Case: Canyon-Mountain Disjointness**:
+     $$\sum_{c \in \text{Map}} [c.\text{hasFlag}(\text{CHASM}) \land c.\text{elevation} \ge 2] == 0$$
+   - **Test Case: Mandatory River Bridge Invariant**:
+     $$\sum_{c \in \text{Map}} [c.\text{hasFlag}(\text{WATER}) \land c.\text{hasFlag}(\text{STRUCTURE\_PATH}) \land \neg c.\text{hasFlag}(\text{STRUCTURE\_BRIDGE})] == 0$$
+   - **Test Case: Water Navmesh Passability**:
+     Verify that every passable water cell in the navmesh graph possesses `CellFlags.STRUCTURE_BRIDGE`.
+2. **Browser Subagent Visual & Functional Verification**:
+   - Reload page and verify map visual layout in SVG canvas.
+   - Confirm mountain ranges are distinct from rivers, canyons occupy dry rift zones, and all trail river crossings feature complete bridges with guide rails and abutments.
+   - Execute the 10-test benchmark suite with 100% pass rate.
 
 ---
 
-### Phase 3: Foundation Leveling & Elevation Topographic Integrity
-* **Status**: ✅ Completed
-
-#### Problem Statement & Root Cause
-1. **Multi-Tier Elevation Splitting Inside Structures**:
-   - When a structure spans an elevation transition (e.g. from lowland $h = 1$ to highland $h = 2$), individual rooms inside the building inherit different elevation numbers.
-   - Because elevation boundaries without ramps are impassable, players moving inside the building can hit an invisible internal cliff between two floor tiles in the same room!
-2. **Cliff Contours Running Through Interior Living Spaces**:
-   - Cells adjacent to the elevation step get tagged with `TERRAIN_CLIFF`, rendering cliff outlines and shadows across indoor wood planks.
-
-#### Architectural Solutions
-1. **Foundation Leveling Engine (`FoundationService`)**:
-   - When stamping any building structure:
-     - Determine the dominant elevation tier $h_{\text{foundation}}$ across the candidate footprint (e.g., median or mode elevation).
-     - Force all footprint cells ($x \in [\text{startX}, \text{endX}], y \in [\text{startY}, \text{endY}]$) to uniform elevation $h_{\text{foundation}}$.
-     - Clear `TERRAIN_CLIFF` within the structure footprint.
-2. **Retaining Wall & Apron Smoothing**:
-   - Push any necessary cliff grade transitions to the exterior boundary of the structure.
-   - If the doorway exits toward a differing elevation tier, automatically stamp a stone stair / ramp (`TERRAIN_RAMP`) directly outside the entrance.
-
----
-
-### Phase 4: Engineered Bridge Spanning & Abutment Alignment
-* **Status**: ✅ Completed
-
-#### Problem Statement & Root Cause
-1. **Bridges Failing to Span the Full Gap (`cell structure_path structure_bridge cliff`)**:
-   - In `carveTrail()`, trails crossing water stepped with random 50/50 diagonal walks. When intersecting a 2-to-3 tile wide river at an oblique angle, only isolated water cells were tagged with `STRUCTURE_BRIDGE`.
-   - The bridge appeared disjointed, leaving open water on adjacent tiles or stopping in the middle of the river.
-   - Furthermore, because riverbanks often bordered cliff contours, shoreline cells inherited both `STRUCTURE_BRIDGE` and `TERRAIN_CLIFF`, causing conflicting passability logic and visual glitches.
-2. **Lack of Engineered Bridge Abutments**:
-   - Real bridges require firm ground anchors (abutments) on both shores. Currently, bridge decks end abruptly at the water's edge without seamless connection to the trail network.
-
-#### Architectural Solutions
-1. **Orthogonal Gap Raycasting & Full-Span Raytracer in `BridgePlacer.js`**:
-   - Instead of merely tagging individual trail steps, `BridgePlacer` traces a complete orthogonal ray across the channel:
-     - When a trail reaches water/chasm at `ShoreA (x1, y1)`:
-     - Raycast across the channel along the primary axis (Horizontal $E \leftrightarrow W$ or Vertical $N \leftrightarrow S$) until reaching solid land at `ShoreB (x2, y2)`.
-     - Stamp an unbroken line of bridge deck cells (`STRUCTURE_BRIDGE | STRUCTURE_PATH`) from `ShoreA` to `ShoreB`.
-     - Remove `WATER`, `CHASM`, and `TERRAIN_CLIFF` from the bridge deck line.
-2. **Dual-Sided Guardrails & Solid Shore Abutments**:
-   - Flank the entire span with parallel guide rails (`STRUCTURE_WALL`) on the water sides to prevent walking off the deck into deep water.
-   - Stamp solid stone/wood bridge abutments on both shoreline connection tiles, ensuring seamless transition between road and bridge.
-
----
-
-### Phase 5: Collision Regression Suite & End-to-End Validation
-* **Status**: ✅ Completed
-
-#### Motivation & Deliverables
-1. **Automated Collision & Precedence Test Battery in `benchmark.js`**:
-   - Add specialized regression test cases verifying:
-     - Pathfinding through a structure stamped near or over water (confirming 100% floor passability).
-     - Pathfinding across full-span river bridges and canyon suspension crossings.
-     - Destination beacon and path-step highlighting visibility on water, bridge, cliff, and highland tiles.
-2. **Interactive Browser Subagent Verification**:
-   - Inspect DOM elements to verify CSS class composition and lack of contradictory combinations (e.g. no `structure_floor water` or `structure_bridge cliff`).
-   - Visually confirm that selection highlights, path steps, and destination beacons render vibrantly over all biomes.
-
----
-
-## Technical Specifications & Class Contracts
+## Architecture & Pipeline Flowchart
 
 ```mermaid
 flowchart TD
-    subgraph Phase1 [Phase 1: State Precedence & CSS]
-        A[cell.js: Flag Precedence] --> B[styles.css: Layered Cascades]
-        B --> C[Overlay Highlighting: !important specificity]
+    subgraph GeoPipeline [1. Geomorphic Generation Pipeline]
+        M[Mountain Massifs: Orogeny] -->|Exclusion Mask| R[River & Hydrology Engine]
+        R -->|Safety Buffer d >= 8| C[Canyon & Fault Line Generator]
+        C -->|Disjoint Domains| TerrClean[Zero Geomorphic Overlap]
     end
 
-    subgraph Phase2 [Phase 2: Structure-Terrain Clearance]
-        D[StructureStamper.canPlace] --> E[Dry vs Waterfront Validation]
-        E --> F[Doorway Egress Clearance]
+    subgraph StructPipeline [2. Structures & Trail Networks]
+        TerrClean --> WSP[WorldStructurePlacer: Outposts]
+        WSP --> PathRoute[Bridge-Aware Path Carving]
+        PathRoute -->|Crosses River| BP[BridgePlacer: Full Span Engine]
+        BP --> BridgeDeck[Continuous Deck + Abutments + Rails]
     end
 
-    subgraph Phase3 [Phase 3: Foundation Leveling]
-        G[Footprint Elevation Harmonizer] --> H[Unified Foundation Grade]
-        H --> I[Exterior Retaining Apron & Door Ramp]
+    subgraph PassabilityRules [3. Kinematic Passability Model]
+        BridgeDeck --> CellCheck[cell.isBlockedType]
+        CellCheck -->|WATER without BRIDGE| Blocked[BLOCKED: Impassable]
+        CellCheck -->|WATER with BRIDGE| Walkable[PASSABLE: Walkable Deck]
     end
 
-    subgraph Phase4 [Phase 4: Engineered Bridges]
-        J[BridgePlacer: Orthogonal Raycaster] --> K[Full Shore-to-Shore Span]
-        K --> L[Abutments & Parallel Guide Rails]
+    subgraph QASuite [4. QA & Verification]
+        Walkable --> BM[Automated Benchmark Battery]
+        BM --> BrowserTest[Browser Subagent Visual Validation]
     end
-
-    subgraph Phase5 [Phase 5: Benchmark & QA]
-        M[Collision Regression Battery] --> N[Visual & Navmesh Telemetry]
-    end
-
-    Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
 ```
 
 ---
 
-## Architectural Class Contracts & Mutation Invariants
+## Mathematical & Topological Invariants
 
 ```
-+---------------------------------------------------------------------------------+
-|                                 cell.js Invariants                              |
-|  - If (flags & STRUCTURE_FLOOR): flags &= ~(WATER | WATER_SHALLOW | CHASM)      |
-|  - If (flags & STRUCTURE_BRIDGE): flags &= ~(TERRAIN_CLIFF | CHASM)             |
-|  - If (flags & STRUCTURE_PATH): flags &= ~(TREE | BLOCKED)                      |
-|  - isBlockedType(): STRUCTURE_FLOOR and STRUCTURE_BRIDGE are always passable     |
-+---------------------------------------------------------------------------------+
-                                         |
-                                         v
-+---------------------------------------------------------------------------------+
-|                             StructureStamper.canPlace                           |
-|  - Dry Structures: assert(cells.every(c => !c.hasFlag(WATER | CHASM)))          |
-|  - Waterfront Structures: assert(shoreContact && waterAdjacent)                 |
-|  - Doorway Check: assert(doorwayCell.hasClearance(1) && !doorwayCell.isWater)   |
-+---------------------------------------------------------------------------------+
-                                         |
-                                         v
-+---------------------------------------------------------------------------------+
-|                               BridgePlacer Engine                               |
-|  - raycastCrossing(shoreA, shoreB): spans 100% of water gap without gaps       |
-|  - stampAbutments(shoreA, shoreB): anchors both ends into solid terrain          |
-|  - buildGuideRails(span): places parallel STRUCTURE_WALL along bridge flanks   |
-+---------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------+
+|                             Macro-Geomorphic Separation                               |
+|                                                                                       |
+|  1. Water vs Mountains:                                                               |
+|     ∀ c ∈ Cells : c.hasFlag(WATER) ⟹ c.elevation == 0 ∧ dist(c, Mountain) ≥ 6         |
+|                                                                                       |
+|  2. Canyon vs Water:                                                                  |
+|     ∀ c ∈ Cells : c.hasFlag(CHASM) ⟹ ¬c.hasFlag(WATER) ∧ dist(c, Water) ≥ 6           |
+|                                                                                       |
+|  3. Canyon vs Mountains:                                                              |
+|     ∀ c ∈ Cells : c.hasFlag(CHASM) ⟹ c.elevation ≤ 1 ∧ dist(c, Mountain) ≥ 6          |
++---------------------------------------------------------------------------------------+
+                                           |
+                                           v
++---------------------------------------------------------------------------------------+
+|                              Mandatory Bridge Crossing                                |
+|                                                                                       |
+|  1. Path on Water Invariant:                                                          |
+|     ∀ c ∈ Cells : (c.hasFlag(WATER) ∧ c.hasFlag(STRUCTURE_PATH))                      |
+|                   ⟹ c.hasFlag(STRUCTURE_BRIDGE)                                       |
+|                                                                                       |
+|  2. Kinematic Passability:                                                            |
+|     isBlockedType(c) : c.hasFlag(WATER) ⟹ (c.flags & STRUCTURE_BRIDGE) == 0          |
+|                                                                                       |
+|  3. Span Completeness:                                                                |
+|     ∀ Bridge b : b.deck.isContiguous(ShoreA, ShoreB) ∧ b.abutments.isDryTerrain()      |
++---------------------------------------------------------------------------------------+
 ```

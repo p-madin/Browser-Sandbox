@@ -46,6 +46,20 @@ class RiverGenerator {
                         continue;
                     }
 
+                    // Macro-Geomorphic Invariant: Never carve water into mountain massifs
+                    const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
+                    let touchesMountain = false;
+                    for (const r of ridges) {
+                        if (Math.hypot(tx - r.cx, ty - r.cy) < r.radius + 6) {
+                            touchesMountain = true;
+                            break;
+                        }
+                    }
+                    if (touchesMountain) continue;
+
+                    // Macro-Geomorphic Invariant: Never carve water into chasms
+                    if (cell.hasFlag(CellFlags.CHASM)) continue;
+
                     const key = `${tx},${ty}`;
                     if (visitedKeys.has(key)) continue;
                     visitedKeys.add(key);
@@ -74,7 +88,21 @@ class RiverGenerator {
             // Meander noise wave
             const riverRng1 = (map && typeof map.getRandom === 'function') ? map.getRandom() : Math.random();
             const meanderOffset = Math.sin(steps * 0.18) * 0.75 + (riverRng1 - 0.5) * 0.4;
-            const currentAngle = targetAngle + meanderOffset;
+
+            // Mountain massif avoidance deflection vector
+            let deflectAngle = 0;
+            const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
+            for (const r of ridges) {
+                const dist = Math.hypot(curX - r.cx, curY - r.cy);
+                const safeDist = r.radius + 8;
+                if (dist < safeDist) {
+                    const awayAngle = Math.atan2(curY - r.cy, curX - r.cx);
+                    const force = (safeDist - dist) / safeDist;
+                    deflectAngle += (awayAngle - targetAngle) * force;
+                }
+            }
+
+            const currentAngle = targetAngle + meanderOffset + deflectAngle;
 
             curX += Math.round(Math.cos(currentAngle));
             curY += Math.round(Math.sin(currentAngle));
@@ -118,6 +146,18 @@ class RiverGenerator {
                         continue;
                     }
 
+                    // Macro-Geomorphic Invariant: Never carve lake into mountain massifs or chasms
+                    const ridges = (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges) ? ElevationService.mountainRidges : [];
+                    let touchesMountain = false;
+                    for (const r of ridges) {
+                        if (Math.hypot(x - r.cx, y - r.cy) < r.radius + 6) {
+                            touchesMountain = true;
+                            break;
+                        }
+                    }
+                    if (touchesMountain) continue;
+                    if (cell.hasFlag(CellFlags.CHASM)) continue;
+
                     cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
                     cell.addFlag(CellFlags.WATER);
 
@@ -142,12 +182,12 @@ class RiverGenerator {
         console.log("[RiverGenerator] Generating natural hydrology, rivers, and lakes...");
         const allModified = [];
 
-        // 1. Primary River: Flows from northwest highland to southeast sea
+        // 1. Primary River: Flows through western lowland valley past spawn to southeast sea
         const river1 = this.carveRiverCourse(
             map,
-            { x: -75, y: -70 },
-            { x: 75, y: 65 },
-            { width: 2, shallowFrequency: 0.15 }
+            { x: -35, y: -85 },
+            { x: 80, y: 55 },
+            { width: 2, shallowFrequency: 0.12 }
         );
         allModified.push(...river1);
 
@@ -155,12 +195,12 @@ class RiverGenerator {
         const lake1 = this.carveLakeBasin(map, 35, 30, 6);
         allModified.push(...lake1);
 
-        // 3. Secondary Tributary: Joining the main river from northeast
+        // 3. Secondary Tributary: Joining the main river from north-central
         const river2 = this.carveRiverCourse(
             map,
-            { x: 60, y: -65 },
-            { x: 10, y: -10 },
-            { width: 2, shallowFrequency: 0.10 }
+            { x: 10, y: -85 },
+            { x: -24, y: -20 },
+            { width: 2, shallowFrequency: 0.08 }
         );
         allModified.push(...river2);
 

@@ -220,6 +220,90 @@ class PathfinderBenchmark {
             comparison: this.lastComparison || null
         }, null, 2);
     }
+
+    /**
+     * Validates the macro-geomorphic non-intersection invariants and mandatory bridge crossings.
+     * @param {mapObject} map 
+     * @returns {Object} validation report
+     */
+    static validateGeomorphicInvariants(map) {
+        if (!map || !map.map_cells) return { success: false, reason: "No map available" };
+
+        let riverMountainCollisions = 0;
+        let riverCanyonCollisions = 0;
+        let canyonMountainCollisions = 0;
+        let unbridgedWaterPaths = 0;
+        let illegalNavmeshWaterSteps = 0;
+        let totalWaterCells = 0;
+        let totalChasmCells = 0;
+        let totalMountainCells = 0;
+        let totalBridgeCells = 0;
+
+        for (let x = map.min_width; x < map.max_width; x++) {
+            for (let y = map.min_height; y < map.max_height; y++) {
+                const cell = map.map_cells[x] && map.map_cells[x][y];
+                if (!cell) continue;
+
+                const isWater = cell.hasFlag(CellFlags.WATER);
+                const isChasm = cell.hasFlag(CellFlags.CHASM);
+                const isMountain = (cell.elevation >= 2);
+                const isPath = cell.hasFlag(CellFlags.STRUCTURE_PATH);
+                const isBridge = cell.hasFlag(CellFlags.STRUCTURE_BRIDGE);
+
+                if (isWater) totalWaterCells++;
+                if (isChasm) totalChasmCells++;
+                if (isMountain) totalMountainCells++;
+                if (isBridge) totalBridgeCells++;
+
+                // Invariant 1: Water and Mountain peaks must never overlap
+                if (isWater && isMountain) {
+                    riverMountainCollisions++;
+                }
+
+                // Invariant 2: Water and Canyon chasms must never overlap
+                if (isWater && isChasm) {
+                    riverCanyonCollisions++;
+                }
+
+                // Invariant 3: Canyon chasms and Mountain peaks must never overlap
+                if (isChasm && isMountain) {
+                    canyonMountainCollisions++;
+                }
+
+                // Invariant 4: Any path on water must be an engineered bridge
+                if (isWater && isPath && !isBridge) {
+                    unbridgedWaterPaths++;
+                }
+
+                // Invariant 5: Navmesh step options on water must strictly possess a bridge
+                if (isWater && !cell.isBlockedType() && !isBridge) {
+                    illegalNavmeshWaterSteps++;
+                }
+            }
+        }
+
+        const success = (riverMountainCollisions === 0 &&
+                         riverCanyonCollisions === 0 &&
+                         canyonMountainCollisions === 0 &&
+                         unbridgedWaterPaths === 0 &&
+                         illegalNavmeshWaterSteps === 0);
+
+        console.log(`[GeomorphicValidation] Water=${totalWaterCells}, Chasm=${totalChasmCells}, Mountain=${totalMountainCells}, Bridges=${totalBridgeCells}`);
+        console.log(`[GeomorphicValidation] Violations: River-Mountain=${riverMountainCollisions}, River-Canyon=${riverCanyonCollisions}, Canyon-Mountain=${canyonMountainCollisions}, UnbridgedPaths=${unbridgedWaterPaths}, IllegalNavmesh=${illegalNavmeshWaterSteps}`);
+
+        return {
+            success,
+            totalWaterCells,
+            totalChasmCells,
+            totalMountainCells,
+            totalBridgeCells,
+            riverMountainCollisions,
+            riverCanyonCollisions,
+            canyonMountainCollisions,
+            unbridgedWaterPaths,
+            illegalNavmeshWaterSteps
+        };
+    }
 }
 
 // UI Controller for test_grid.html

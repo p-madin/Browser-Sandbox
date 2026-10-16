@@ -110,13 +110,32 @@ class WorldStructurePlacer {
 
             const cell = map.map_cells[curX] && map.map_cells[curX][curY];
             if (cell) {
+                // Mandatory River Crossing Rule: If trail encounters water, it must cross via an engineered bridge
+                if (cell.hasFlag(CellFlags.WATER) || cell.hasFlag(CellFlags.WATER_SHALLOW)) {
+                    if (typeof BridgePlacer !== 'undefined' && typeof BridgePlacer.spanCrossingAt === 'function') {
+                        const span = BridgePlacer.spanCrossingAt(map, curX, curY);
+                        if (span && span.deckCells && span.deckCells.length > 0) {
+                            trailCells.push(...span.deckCells);
+                            // Find far abutment closest to destination and advance path head
+                            const farAbutment = span.abutmentCells.reduce((closest, ab) => {
+                                const d1 = Math.hypot(ab.my_x - to.x, ab.my_y - to.y);
+                                const d2 = closest ? Math.hypot(closest.my_x - to.x, closest.my_y - to.y) : Infinity;
+                                return d1 < d2 ? ab : closest;
+                            }, null);
+                            if (farAbutment) {
+                                curX = farAbutment.my_x;
+                                curY = farAbutment.my_y;
+                                trailCells.push(farAbutment);
+                            }
+                            continue;
+                        }
+                    }
+                }
+
                 // Do not overwrite walls or interior floors
                 if (!cell.hasFlag(CellFlags.STRUCTURE_WALL) && !cell.hasFlag(CellFlags.STRUCTURE_FLOOR)) {
                     cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
                     cell.addFlag(CellFlags.STRUCTURE_PATH);
-                    if (cell.hasFlag(CellFlags.WATER)) {
-                        cell.addFlag(CellFlags.STRUCTURE_BRIDGE);
-                    }
                     if (trailCells.length > 0) {
                         const prev = trailCells[trailCells.length - 1];
                         if (Math.abs((prev.elevation || 1) - (cell.elevation || 1)) >= 1) {

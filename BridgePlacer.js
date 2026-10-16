@@ -35,11 +35,51 @@ class BridgePlacer {
             }
         }
 
-        // 2. Synchronize passability graph across all bridges and shorelines
+        // 2. Mandatory River Bridge Invariant Sweep:
+        // Guarantee that NO water cell ever retains STRUCTURE_PATH without STRUCTURE_BRIDGE
+        for (let x = map.min_width; x < map.max_width; x++) {
+            for (let y = map.min_height; y < map.max_height; y++) {
+                const cell = map.map_cells[x] && map.map_cells[x][y];
+                if (cell && cell.hasFlag(CellFlags.WATER)) {
+                    if (cell.hasFlag(CellFlags.STRUCTURE_PATH) && !cell.hasFlag(CellFlags.STRUCTURE_BRIDGE)) {
+                        const span = this.spanFullCrossing(map, cell, processedCoords);
+                        if (span) {
+                            bridges.push(span);
+                            allModifiedCells.push(...span.deckCells, ...span.railCells, ...span.abutmentCells);
+                        } else {
+                            // If water channel cannot be spanned, strip bare path flag
+                            cell.removeFlag(CellFlags.STRUCTURE_PATH);
+                            allModifiedCells.push(cell);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Synchronize passability graph across all bridges and shorelines
         this.recalculateCrossingPassability(map, allModifiedCells);
 
         console.log(`[BridgePlacer] Engineered ${bridges.length} full-span bridges across waterways and chasms.`);
         return bridges;
+    }
+
+    /**
+     * Constructs an engineered shore-to-shore bridge crossing at a specific coordinate on-demand.
+     * @param {mapObject} map 
+     * @param {number} x 
+     * @param {number} y 
+     * @returns {Object|null}
+     */
+    static spanCrossingAt(map, x, y) {
+        const seedCell = map.map_cells[x] && map.map_cells[x][y];
+        if (!seedCell) return null;
+        const processedCoords = new Set();
+        const span = this.spanFullCrossing(map, seedCell, processedCoords);
+        if (span) {
+            const allModified = [...span.deckCells, ...span.railCells, ...span.abutmentCells];
+            this.recalculateCrossingPassability(map, allModified);
+        }
+        return span;
     }
 
     /**

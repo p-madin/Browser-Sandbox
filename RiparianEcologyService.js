@@ -181,6 +181,9 @@ class RiparianEcologyService {
     static integrateGeomorphicWorld(map) {
         this.populateRiparianFlora(map);
         this.placeWaterfrontArchitecture(map);
+        if (typeof BridgePlacer !== 'undefined') {
+            BridgePlacer.processRiverCrossings(map);
+        }
     }
 }
 
