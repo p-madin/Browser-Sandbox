@@ -129,35 +129,183 @@ class CanyonGenerator {
     }
 
     /**
-     * Stamps a timber-slat suspension rope bridge across a canyon chasm coordinate.
+     * Stamps an adaptive, engineered suspension rope bridge across a canyon chasm coordinate.
+     * Evaluates local chasm orientation, raycasts until solid cliff edges are hit on both shores,
+     * anchors cliff-top abutments, lays an unbroken deck, and flanks with safety guide rails.
      * @param {mapObject} map 
      * @param {{x: number, y: number}} center 
      * @param {Array<cell_meta>} modifiedCells 
+     * @returns {Object|null}
      */
     static stampSuspensionCrossing(map, center, modifiedCells) {
-        // Build 5x3 wooden rope bridge spanning from solid cliff to solid cliff
-        for (let ox = -2; ox <= 2; ox++) {
-            for (let oy = -1; oy <= 1; oy++) {
-                const tx = center.x + ox;
-                const ty = center.y + oy;
-                const cell = map.map_cells[tx] && map.map_cells[tx][ty];
+        // Find nearest central chasm cell around center
+        let seedCell = map.map_cells[center.x] && map.map_cells[center.x][center.y];
+        if (!seedCell || !seedCell.hasFlag(CellFlags.CHASM)) {
+            let found = null;
+            for (let r = 1; r <= 3 && !found; r++) {
+                for (let dx = -r; dx <= r && !found; dx++) {
+                    for (let dy = -r; dy <= r && !found; dy++) {
+                        const c = map.map_cells[center.x + dx] && map.map_cells[center.x + dx][center.y + dy];
+                        if (c && c.hasFlag(CellFlags.CHASM)) {
+                            found = c;
+                        }
+                    }
+                }
+            }
+            if (found) seedCell = found;
+        }
+
+        if (!seedCell) return null;
+        const sx = seedCell.my_x;
+        const sy = seedCell.my_y;
+
+        // Determine dominant chasm direction: check whether chasm extends more horizontally or vertically
+        let chasmH = 0, chasmV = 0;
+        for (let d = -4; d <= 4; d++) {
+            const hCell = map.map_cells[sx + d] && map.map_cells[sx + d][sy];
+            if (hCell && hCell.hasFlag(CellFlags.CHASM)) chasmH++;
+
+            const vCell = map.map_cells[sx] && map.map_cells[sx][sy + d];
+            if (vCell && vCell.hasFlag(CellFlags.CHASM)) chasmV++;
+        }
+
+        // If chasm runs horizontally (East-West), bridge crosses Vertically (North-South, crossAxis = "V")
+        // If chasm runs vertically (North-South), bridge crosses Horizontally (East-West, crossAxis = "H")
+        const crossAxis = (chasmH >= chasmV) ? "V" : "H";
+
+        const deckCells = [];
+        const railCells = [];
+        const abutmentCells = [];
+
+        if (crossAxis === "H") {
+            // Raycast West to find solid cliff edge Shore A
+            let westX = sx;
+            while (westX > map.min_width + 1) {
+                const c = map.map_cells[westX] && map.map_cells[westX][sy];
+                if (!c || (!c.hasFlag(CellFlags.CHASM) && !c.hasFlag(CellFlags.WATER))) break;
+                westX--;
+            }
+
+            // Raycast East to find solid cliff edge Shore B
+            let eastX = sx;
+            while (eastX < map.max_width - 2) {
+                const c = map.map_cells[eastX] && map.map_cells[eastX][sy];
+                if (!c || (!c.hasFlag(CellFlags.CHASM) && !c.hasFlag(CellFlags.WATER))) break;
+                eastX++;
+            }
+
+            const shoreA = map.map_cells[westX] && map.map_cells[westX][sy];
+            const shoreB = map.map_cells[eastX] && map.map_cells[eastX][sy];
+            if (!shoreA || !shoreB) return null;
+
+            const spanLen = eastX - westX;
+            if (spanLen < 2 || spanLen > 12) return null;
+
+            const bridgeElev = shoreA.elevation || shoreB.elevation || 1;
+
+            // Anchor abutments on solid ground
+            shoreA.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreA.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM);
+            shoreA.elevation = bridgeElev;
+            abutmentCells.push(shoreA);
+            modifiedCells.push(shoreA);
+
+            shoreB.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreB.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM);
+            shoreB.elevation = bridgeElev;
+            abutmentCells.push(shoreB);
+            modifiedCells.push(shoreB);
+
+            // Lay continuous bridge deck from westX + 1 to eastX - 1
+            for (let x = westX + 1; x <= eastX - 1; x++) {
+                const cell = map.map_cells[x] && map.map_cells[x][sy];
                 if (!cell) continue;
 
-                // Center line is passable wooden walkway
-                if (oy === 0) {
-                    cell.removeFlag(CellFlags.CHASM | CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
-                    cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
-                    cell.elevation = 1;
-                    modifiedCells.push(cell);
-                } else {
-                    // Flanks are suspension rope guide rails
-                    if (cell.hasFlag(CellFlags.CHASM)) {
-                        cell.addFlag(CellFlags.STRUCTURE_WALL);
-                        modifiedCells.push(cell);
+                cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
+                cell.removeFlag(CellFlags.CHASM | CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
+                cell.elevation = bridgeElev;
+                deckCells.push(cell);
+                modifiedCells.push(cell);
+
+                // Flank guide rails North and South
+                for (const dy of [-1, 1]) {
+                    const rail = map.map_cells[x] && map.map_cells[x][sy + dy];
+                    if (rail && rail.hasFlag(CellFlags.CHASM) && !rail.hasFlag(CellFlags.STRUCTURE_PATH)) {
+                        rail.addFlag(CellFlags.STRUCTURE_WALL);
+                        railCells.push(rail);
+                        modifiedCells.push(rail);
+                    }
+                }
+            }
+        } else {
+            // crossAxis === "V": Raycast North to find solid cliff edge Shore A
+            let northY = sy;
+            while (northY > map.min_height + 1) {
+                const c = map.map_cells[sx] && map.map_cells[sx][northY];
+                if (!c || (!c.hasFlag(CellFlags.CHASM) && !c.hasFlag(CellFlags.WATER))) break;
+                northY--;
+            }
+
+            // Raycast South to find solid cliff edge Shore B
+            let southY = sy;
+            while (southY < map.max_height - 2) {
+                const c = map.map_cells[sx] && map.map_cells[sx][southY];
+                if (!c || (!c.hasFlag(CellFlags.CHASM) && !c.hasFlag(CellFlags.WATER))) break;
+                southY++;
+            }
+
+            const shoreA = map.map_cells[sx] && map.map_cells[sx][northY];
+            const shoreB = map.map_cells[sx] && map.map_cells[sx][southY];
+            if (!shoreA || !shoreB) return null;
+
+            const spanLen = southY - northY;
+            if (spanLen < 2 || spanLen > 12) return null;
+
+            const bridgeElev = shoreA.elevation || shoreB.elevation || 1;
+
+            // Anchor abutments on solid ground
+            shoreA.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreA.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM);
+            shoreA.elevation = bridgeElev;
+            abutmentCells.push(shoreA);
+            modifiedCells.push(shoreA);
+
+            shoreB.addFlag(CellFlags.STRUCTURE_PATH);
+            shoreB.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.TERRAIN_CLIFF | CellFlags.CHASM);
+            shoreB.elevation = bridgeElev;
+            abutmentCells.push(shoreB);
+            modifiedCells.push(shoreB);
+
+            // Lay continuous bridge deck from northY + 1 to southY - 1
+            for (let y = northY + 1; y <= southY - 1; y++) {
+                const cell = map.map_cells[sx] && map.map_cells[sx][y];
+                if (!cell) continue;
+
+                cell.addFlag(CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH);
+                cell.removeFlag(CellFlags.CHASM | CellFlags.BLOCKED | CellFlags.TREE | CellFlags.TERRAIN_CLIFF);
+                cell.elevation = bridgeElev;
+                deckCells.push(cell);
+                modifiedCells.push(cell);
+
+                // Flank guide rails West and East
+                for (const dx of [-1, 1]) {
+                    const rail = map.map_cells[sx + dx] && map.map_cells[sx + dx][y];
+                    if (rail && rail.hasFlag(CellFlags.CHASM) && !rail.hasFlag(CellFlags.STRUCTURE_PATH)) {
+                        rail.addFlag(CellFlags.STRUCTURE_WALL);
+                        railCells.push(rail);
+                        modifiedCells.push(rail);
                     }
                 }
             }
         }
+
+        return {
+            crossAxis,
+            deckCells,
+            railCells,
+            abutmentCells,
+            spanLength: deckCells.length
+        };
     }
 
     /**

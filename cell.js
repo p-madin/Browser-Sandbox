@@ -204,9 +204,12 @@ class cell_meta {
     isBlockedType() {
         // Closed doors, barricades, and structural walls are impassable barriers
         if (this.flags & (CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_WALL)) return true;
-        // Strict water crossing invariant: Water is strictly impassable unless covered by an engineered bridge deck
+        // Strict water crossing invariant: Deep water is strictly impassable unless covered by an engineered bridge deck.
+        // Shallow water (CellFlags.WATER_SHALLOW) acts as a wading ford and is passable.
         if (this.flags & CellFlags.WATER) {
-            return (this.flags & CellFlags.STRUCTURE_BRIDGE) === 0;
+            if (this.flags & CellFlags.STRUCTURE_BRIDGE) return false;
+            if (this.flags & CellFlags.WATER_SHALLOW) return false;
+            return true;
         }
         // Paths, bridges, ramps, and interior floors are always passable
         if (this.flags & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_FLOOR)) return false;
@@ -379,7 +382,9 @@ class cell_meta {
                 if (delta > 0) {
                     if (delta > 1) return false; // Sheer cliff
                     const hasRamp = this.hasFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE) ||
-                                    c.hasFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE);
+                                    c.hasFlag(CellFlags.TERRAIN_RAMP | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE) ||
+                                    this.hasFlag(CellFlags.WATER_SHALLOW) ||
+                                    c.hasFlag(CellFlags.WATER_SHALLOW);
                     if (!hasRamp) return false;
                 }
                 return true;

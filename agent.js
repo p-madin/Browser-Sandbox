@@ -27,6 +27,7 @@ class agent_meta {
         var start = new Date();
         var best_options = my_pathfinder_object.dertmineBestPath(this);
         var end = new Date();
+        /*
         console.log("---Operation start---");
         console.log("From: ");
         console.log("To: ");
@@ -36,6 +37,7 @@ class agent_meta {
         console.log("Unique options: " + my_pathfinder_object.unique_options.length);
         console.log("Best options: " + my_pathfinder_object.best_options.length);
         console.log("---Operation end---");
+        */
 
         this.agentCellOccupied.removeFlag(CellFlags.THINKING);
         this.agentCellOccupied.decorateCell(new Array());

@@ -49,9 +49,9 @@ class RiparianEcologyService {
                     if (hasNearbyWater) {
                         const seed = (Math.abs(Math.sin(x * 12.9898 + y * 78.233)) * 43758.5453) % 1;
                         if (seed < 0.28) {
-                            // Lush riparian reeds & rushes
+                            // Lush riparian reeds & rushes (standalone passable shrubs)
+                            cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED);
                             cell.addFlag(CellFlags.TERRAIN_FLORA);
-                            cell.removeFlag(CellFlags.BLOCKED);
                             reedsCount++;
                             modifiedCells.push(cell);
                         } else if (seed < 0.40) {
