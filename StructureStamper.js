@@ -172,8 +172,8 @@ class StructureStamper {
                 const my = startY + y;
                 const cell = map.map_cells[mx][my];
 
-                // Clear natural trees, rocks, and water
-                cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.WATER | CellFlags.WATER_SHALLOW);
+                // Clear natural trees, rocks, sand, and water
+                cell.removeFlag(CellFlags.TREE | CellFlags.BLOCKED | CellFlags.WATER | CellFlags.WATER_SHALLOW | CellFlags.TERRAIN_SAND);
 
                 // Apply floor layer
                 if (blueprint.layers.floor && blueprint.layers.floor[y] && blueprint.layers.floor[y][x]) {

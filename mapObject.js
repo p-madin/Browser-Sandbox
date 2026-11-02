@@ -133,9 +133,7 @@ class mapObject {
         if (typeof BridgePlacer !== 'undefined') {
             BridgePlacer.processRiverCrossings(this);
         }
-        if (typeof RiparianEcologyService !== 'undefined') {
-            RiparianEcologyService.integrateGeomorphicWorld(this);
-        }
+        this.generateSandyRiverbanks();
         for (var i = this.min_width; i < this.max_width; i++) {
             for (var j = this.min_height; j < this.max_height; j++) {
                 let this_cell = this.map_cells[i][j].getCellMeta();
@@ -143,6 +141,143 @@ class mapObject {
                 this_cell.determineNeighboursPassable(this);
             }
         }
+    }
+
+    /**
+     * Phase 1: Procedurally generates natural 1-2 tile sandy riverbanks around rivers.
+     * Tier 1 (d = 1): Guaranteed shoreline ribbon (ensures unbroken continuity and prevents vector pinching).
+     * Tier 2 (d = 2): Deterministic seeded meander expansion (creates natural alluvial beachheads).
+     * Strict exclusion filters skip cells already containing grass, trees, flora, chasms, cliffs, elevation >= 2, or structures.
+     */
+    generateSandyRiverbanks() {
+        if (!this.map_cells) return;
+        const CellFlagsRef = (typeof CellFlags !== 'undefined') ? CellFlags : (typeof require !== 'undefined' ? require('./cell.js').CellFlags : {});
+        const minW = this.min_width;
+        const maxW = this.max_width;
+        const minH = this.min_height;
+        const maxH = this.max_height;
+
+        const isWater = (c) => c && ((c.flags & (CellFlagsRef.WATER | CellFlagsRef.WATER_SHALLOW)) !== 0);
+
+        const canBecomeSand = (c) => {
+            if (!c) return false;
+            const flags = c.flags;
+            // Exclude water and existing sand
+            if ((flags & (CellFlagsRef.WATER | CellFlagsRef.WATER_SHALLOW | CellFlagsRef.TERRAIN_SAND)) !== 0) return false;
+            // Exclude grass, trees, and riparian flora
+            if ((flags & (CellFlagsRef.GRASS | CellFlagsRef.TREE | CellFlagsRef.TERRAIN_FLORA)) !== 0) return false;
+            // Exclude chasms, cliffs, and ramps
+            if ((flags & (CellFlagsRef.CHASM | CellFlagsRef.TERRAIN_CLIFF | CellFlagsRef.TERRAIN_RAMP)) !== 0) return false;
+            // Exclude high elevation (mountains)
+            if (c.elevation !== undefined && c.elevation >= 2) return false;
+            // Exclude all structural features
+            const structMask = CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_FLOOR | 
+                               CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED | 
+                               CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE | 
+                               CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH |
+                               CellFlagsRef.STRUCTURE_FIXTURE | CellFlagsRef.BLOCKED;
+            if ((flags & structMask) !== 0) return false;
+            return true;
+        };
+
+        // 1. Identify all water cells
+        const waterCoords = [];
+        for (let x = minW; x < maxW; x++) {
+            const col = this.map_cells[x];
+            if (!col) continue;
+            for (let y = minH; y < maxH; y++) {
+                const cell = col[y];
+                if (isWater(cell)) {
+                    waterCoords.push([x, y]);
+                }
+            }
+        }
+
+        if (waterCoords.length === 0) return;
+
+        // 2. Expand Tier 1 (distance = 1)
+        const tier1Set = new Set();
+        const keyOf = (x, y) => `${x},${y}`;
+
+        for (let i = 0; i < waterCoords.length; i++) {
+            const [wx, wy] = waterCoords[i];
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = wx + dx;
+                    const ny = wy + dy;
+                    if (nx < minW || nx >= maxW || ny < minH || ny >= maxH) continue;
+                    const cell = this.map_cells[nx] && this.map_cells[nx][ny];
+                    if (canBecomeSand(cell)) {
+                        tier1Set.add(keyOf(nx, ny));
+                    }
+                }
+            }
+        }
+
+        // Apply Tier 1 (guaranteed shoreline ribbon)
+        for (const key of tier1Set) {
+            const [sx, sy] = key.split(',').map(Number);
+            const cell = this.map_cells[sx][sy].getCellMeta();
+            cell.addFlag(CellFlagsRef.TERRAIN_SAND);
+        }
+
+        // 3. Expand Tier 2 (distance = 2) around Tier 1 cells
+        const tier2Candidates = new Set();
+        for (const key of tier1Set) {
+            const [t1x, t1y] = key.split(',').map(Number);
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = t1x + dx;
+                    const ny = t1y + dy;
+                    if (nx < minW || nx >= maxW || ny < minH || ny >= maxH) continue;
+                    const k = keyOf(nx, ny);
+                    if (!tier1Set.has(k)) {
+                        const cell = this.map_cells[nx] && this.map_cells[nx][ny];
+                        if (canBecomeSand(cell)) {
+                            tier2Candidates.add(k);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply Tier 2 with deterministic spatial hashing and meander bias
+        let sandCount = tier1Set.size;
+        for (const key of tier2Candidates) {
+            const [t2x, t2y] = key.split(',').map(Number);
+            const cell = this.map_cells[t2x][t2y].getCellMeta();
+
+            // Count how many Tier 1 sand neighbors touch this cell
+            let t1Neighbors = 0;
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (tier1Set.has(keyOf(t2x + dx, t2y + dy))) {
+                        t1Neighbors++;
+                    }
+                }
+            }
+
+            // Seeded pseudo-random hash
+            let seedVal;
+            if (typeof this.hashInt === 'function') {
+                seedVal = (this.hashInt(`sand_${t2x}_${t2y}`) % 100) / 100;
+            } else {
+                seedVal = (Math.abs(Math.sin(t2x * 37.17 + t2y * 83.53)) * 43758.5453) % 1;
+            }
+
+            // Probability threshold: 55% base, elevated to 80% if tucked inside a meander (>= 3 sand neighbors)
+            const threshold = t1Neighbors >= 3 ? 0.80 : (t1Neighbors === 2 ? 0.55 : 0.35);
+
+            if (seedVal < threshold) {
+                cell.addFlag(CellFlagsRef.TERRAIN_SAND);
+                sandCount++;
+            }
+        }
+
+        console.log(`[mapObject] Generated ${sandCount} sandy riverbank cells (Tier 1: ${tier1Set.size}, Tier 2: ${sandCount - tier1Set.size}).`);
     }
 
     /**

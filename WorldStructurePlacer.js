@@ -246,7 +246,10 @@ class WorldStructurePlacer {
             }
         }
 
-        // 4. Connect Doorways via Procedural Trails
+        // 4. Waterfront Hydrological Architecture (Riverside Watermill & Lakeside Fishing Pier)
+        this.placeWaterfrontArchitecture(map, placed);
+
+        // 5. Connect Doorways via Procedural Trails
         if (placed.length >= 2) {
             const cabin = placed[0]; // Starter cabin
             const cabinDoor = this.findDoorway(map, cabin);
@@ -274,6 +277,105 @@ class WorldStructurePlacer {
 
         console.log(`[WorldStructurePlacer] World population complete. Placed ${placed.length} structures and connected trail network.`);
         return placed;
+    }
+
+    /**
+     * Finds waterfront sites and stamps specialized hydrological architecture (Riverside Watermill & Lakeside Fishing Pier).
+     * @param {mapObject} map 
+     * @param {Array<Object>} placed 
+     * @returns {Array<Object>} placed waterfront structures
+     */
+    static placeWaterfrontArchitecture(map, placed = []) {
+        console.log("[WorldStructurePlacer] Placing waterfront architecture (Watermill & Fishing Pier)...");
+        const waterfrontPlaced = [];
+        const minClearance = 12;
+
+        // 1. Locate candidate riverbank cell for Riverside Watermill
+        const watermillBP = (typeof StructureLibrary !== 'undefined' && typeof StructureLibrary.getBlueprint === 'function')
+            ? StructureLibrary.getBlueprint("watermill")
+            : null;
+        if (watermillBP) {
+            let placedMill = false;
+            for (let x = -30; x <= 30 && !placedMill; x += 3) {
+                for (let y = -30; y <= 30 && !placedMill; y += 3) {
+                    if (Math.hypot(x, y) < 10) continue;
+
+                    const cell = map.map_cells[x] && map.map_cells[x][y];
+                    if (!cell || cell.hasFlag(CellFlags.WATER)) continue;
+
+                    // Verify adjacent water for the paddlewheel
+                    const eastCell = map.map_cells[x + 1] && map.map_cells[x + 1][y];
+                    if (eastCell && eastCell.hasFlag(CellFlags.WATER)) {
+                        if (this.hasClearance(placed, x, y, minClearance)) {
+                            if (StructureStamper.canPlace(map, watermillBP, x, y)) {
+                                const inst = StructureStamper.stamp(map, watermillBP, x, y);
+                                if (inst) {
+                                    placed.push(inst);
+                                    waterfrontPlaced.push(inst);
+                                    placedMill = true;
+
+                                    // Carve connecting trail to starter settlement
+                                    if (placed.length > 0) {
+                                        const cabin = placed[0];
+                                        const cabinDoor = this.findDoorway(map, cabin);
+                                        const millDoor = this.findDoorway(map, inst);
+                                        if (cabinDoor && millDoor) {
+                                            this.carveTrail(map, cabinDoor, millDoor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Locate candidate lake perimeter cell for Lakeside Fishing Pier
+        const pierBP = (typeof StructureLibrary !== 'undefined' && typeof StructureLibrary.getBlueprint === 'function')
+            ? StructureLibrary.getBlueprint("fishing_pier")
+            : null;
+        if (pierBP) {
+            let placedPier = false;
+            // Lake basin is centered around (35, 30)
+            const searchCoords = [
+                { x: 35, y: 22 },
+                { x: 30, y: 28 },
+                { x: 40, y: 36 },
+                { x: 28, y: 32 }
+            ];
+
+            for (const cand of searchCoords) {
+                if (this.hasClearance(placed, cand.x, cand.y, 8)) {
+                    if (StructureStamper.canPlace(map, pierBP, cand.x, cand.y)) {
+                        const inst = StructureStamper.stamp(map, pierBP, cand.x, cand.y);
+                        if (inst) {
+                            placed.push(inst);
+                            waterfrontPlaced.push(inst);
+                            placedPier = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Synchronize local passability graph across all modified cells
+        for (const s of waterfrontPlaced) {
+            const b = s.bounds;
+            for (let x = b.startX - 1; x <= b.endX + 1; x++) {
+                for (let y = b.startY - 1; y <= b.endY + 1; y++) {
+                    const c = map.map_cells[x] && map.map_cells[x][y];
+                    if (c) {
+                        c.decorateCell([]);
+                        c.determineNeighboursPassable(map);
+                    }
+                }
+            }
+        }
+
+        console.log(`[WorldStructurePlacer] Placed ${waterfrontPlaced.length} waterfront landmarks.`);
+        return waterfrontPlaced;
     }
 }
 

@@ -91,6 +91,12 @@ body>div.canvas_container {
     fill: rgb(190, 0, 0);
 }
 
+.cell.sand {
+    fill: #fde047;
+    stroke: #eab308;
+    stroke-width: 0.5px;
+}
+
 /* Hydrology & Terrain Landforms (Phase 1 & 3) */
 .cell.water {
     fill: #0284c7;
@@ -189,9 +195,170 @@ body>div.canvas_container {
     pointer-events: none;
 }
 
+/* Phase 2: Dual-Threshold Transition Fringes (Grid vs Vector Discrepancy Highlighting) */
+.terrain_contour.contour_fringe {
+    pointer-events: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.terrain_contour.contour_grass_fringe {
+    fill: rgba(74, 222, 128, 0.32);
+    stroke: none;
+    opacity: 1;
+}
+
+.terrain_contour.contour_sand_fringe {
+    fill: rgba(254, 240, 138, 0.42);
+    stroke: none;
+    opacity: 1;
+}
+
+.terrain_contour.contour_water_fringe {
+    fill: rgba(56, 189, 248, 0.35);
+    stroke: none;
+    opacity: 1;
+}
+
+.terrain_contour.contour_cliff_fringe {
+    fill: rgba(71, 85, 105, 0.22);
+    stroke: none;
+    opacity: 1;
+}
+
+/* Phase 2: Boundary Micro-Scatter Detritus (Tabletop High-Contrast Styling) */
+.terrain_scatter {
+    pointer-events: none;
+}
+
+.terrain_scatter.scatter_pebbles,
+.terrain_scatter.scatter_water {
+    fill: #cbd5e1;
+    stroke: #475569;
+    stroke-width: 0.9px;
+    stroke-linejoin: round;
+    opacity: 0.96;
+}
+
+.terrain_scatter.scatter_foam {
+    fill: #ffffff;
+    stroke: #7dd3fc;
+    stroke-width: 0.8px;
+    stroke-linejoin: round;
+    opacity: 0.98;
+}
+
+.terrain_scatter.scatter_clovers,
+.terrain_scatter.scatter_grass {
+    fill: #4ade80;
+    stroke: #15803d;
+    stroke-width: 0.8px;
+    stroke-linejoin: round;
+    opacity: 0.96;
+}
+
+.terrain_scatter.scatter_flowers {
+    fill: #facc15;
+    stroke: #b45309;
+    stroke-width: 0.7px;
+    stroke-linejoin: round;
+    opacity: 0.98;
+}
+
+.terrain_scatter.scatter_scree,
+.terrain_scatter.scatter_cliff {
+    fill: #94a3b8;
+    stroke: #1e293b;
+    stroke-width: 1.0px;
+    stroke-linejoin: round;
+    opacity: 0.96;
+}
+
+/* Directional Prefab Cell Reticles (Phase 2 - Architecture 1: Restrained Plain Fills) */
+.cell_reticle {
+    pointer-events: none;
+}
+
+.reticle_fill {
+    fill: inherit;
+    stroke: none;
+}
+
+.reticle_path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cell_reticle.reticle_sand {
+    fill: rgba(254, 240, 138, 0.48);
+    stroke: #d97706;
+    color: #d97706;
+    opacity: 0.92;
+}
+
+.cell_reticle.reticle_water {
+    fill: #0284c7;
+    stroke: #0284c7;
+    color: #0284c7;
+    opacity: 1;
+}
+
+.cell_reticle.reticle_water_shallow {
+    fill: #38bdf8;
+    stroke: #0ea5e9;
+    color: #0ea5e9;
+    opacity: 1;
+}
+
+.cell_reticle.reticle_grass {
+    fill: rgb(62, 186, 0);
+    stroke: #16a34a;
+    color: #16a34a;
+    opacity: 1;
+}
+
+.cell_reticle.reticle_cliff {
+    fill: rgba(148, 163, 184, 0.38);
+    stroke: #475569;
+    color: #475569;
+    opacity: 0.92;
+}
+
+.cell_reticle.reticle_chasm {
+    fill: rgba(99, 102, 241, 0.42);
+    stroke: #312e81;
+    color: #312e81;
+    opacity: 0.92;
+}
+
+.cell_reticle.reticle_mountain_tier1 {
+    fill: rgba(21, 128, 61, 0.35);
+    stroke: #15803d;
+    color: #15803d;
+    opacity: 0.88;
+}
+
+.cell_reticle.reticle_mountain_tier2 {
+    fill: rgba(100, 116, 139, 0.40);
+    stroke: #334155;
+    color: #334155;
+    opacity: 0.92;
+}
+
 .terrain_contour.contour_grass {
     fill: rgb(62, 186, 0);
     opacity: 1;
+}
+
+.terrain_contour.contour_sand {
+    fill: #fef08a;
+    stroke: #eab308;
+    stroke-width: 1.2px;
+    stroke-linejoin: round;
+    opacity: 0.90;
 }
 
 .terrain_contour.contour_elev_2 {
@@ -326,6 +493,12 @@ body>div.canvas_container {
     stroke: #fef08a;
     stroke-width: 1px;
     cursor: pointer;
+}
+
+/* Bridges & Structure Deck Layer (Visual Overlays - Pointer events pass through to #tiles_layer) */
+#bridges_layer,
+#bridges_layer * {
+    pointer-events: none !important;
 }
 
 /* Multi-Layer Overhead Roofs & Dynamic Cutaway (Phase 4) */

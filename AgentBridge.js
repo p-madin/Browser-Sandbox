@@ -35,6 +35,10 @@ class AgentBridge {
         return true;
     }
 
+    static teleportToBiome(biome) {
+        return this.teleportBiome(biome);
+    }
+
     /**
      * Teleports to a named macro-geomorphic biome location.
      * @param {"spawn"|"mountains"|"canyons"|"river"|"lake"} biome 

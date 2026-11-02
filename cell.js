@@ -30,7 +30,8 @@ const CellFlags = Object.freeze({
     STRUCTURE_BRIDGE: 1 << 20,    // 1048576 - Engineered river crossing deck
     TERRAIN_RAMP: 1 << 21,        // 2097152 - Ramp / stone steps connecting elevation tiers
     CHASM: 1 << 22,               // 4194304 - Impassable bottomless fissure/canyon void
-    TERRAIN_FLORA: 1 << 23        // 8388608 - Riparian reeds/flora
+    TERRAIN_FLORA: 1 << 23,       // 8388608 - Riparian reeds/flora
+    TERRAIN_SAND: 1 << 24         // 16777216 - Riparian alluvial sandbank
 });
 
 /**
@@ -96,7 +97,10 @@ const CellFlagAliases = Object.freeze({
     "Chasm": CellFlags.CHASM,
     "chasm": CellFlags.CHASM,
     "TerrainFlora": CellFlags.TERRAIN_FLORA,
-    "flora": CellFlags.TERRAIN_FLORA
+    "flora": CellFlags.TERRAIN_FLORA,
+    "SandDecoration": CellFlags.TERRAIN_SAND,
+    "sand": CellFlags.TERRAIN_SAND,
+    "terrain_sand": CellFlags.TERRAIN_SAND
 });
 
 // Expose globally for browser console and other modules
@@ -321,6 +325,7 @@ class cell_meta {
         if (this.flags & CellFlags.TERRAIN_RAMP) classes.push("terrain_ramp");
         if (this.flags & CellFlags.CHASM && !hasBridge && !hasStructure) classes.push("chasm");
         if (this.flags & CellFlags.TERRAIN_FLORA && !hasStructure) classes.push("flora");
+        if (this.flags & CellFlags.TERRAIN_SAND && !hasStructure) classes.push("sand");
 
         if (this.elevation !== undefined && this.elevation !== 1 && !hasStructure) {
             classes.push(`elev_${this.elevation}`);

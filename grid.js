@@ -1,3 +1,41 @@
+const RETICLE_SYMBOLS = [
+    null,
+    "#symbol_reticle_edge",     // 1: N
+    "#symbol_reticle_edge",     // 2: E
+    "#symbol_reticle_corner",   // 3: N+E
+    "#symbol_reticle_edge",     // 4: S
+    "#symbol_reticle_parallel", // 5: N+S
+    "#symbol_reticle_corner",   // 6: E+S
+    "#symbol_reticle_u",        // 7: N+E+S (open W)
+    "#symbol_reticle_edge",     // 8: W
+    "#symbol_reticle_corner",   // 9: W+N
+    "#symbol_reticle_parallel", // 10: E+W
+    "#symbol_reticle_u",        // 11: W+N+E (open S)
+    "#symbol_reticle_corner",   // 12: S+W
+    "#symbol_reticle_u",        // 13: S+W+N (open E)
+    "#symbol_reticle_u",        // 14: E+S+W (open N)
+    "#symbol_reticle_island"    // 15: all 4
+];
+
+const RETICLE_ANGLES = [
+    0, 0, 90, 0,
+    180, 0, 90, 90,
+    270, 270, 90, 0,
+    180, 270, 180, 0
+];
+
+const RETICLE_CLASSES = [
+    null,
+    "cell_reticle reticle_sand",
+    "cell_reticle reticle_water",
+    "cell_reticle reticle_water_shallow",
+    "cell_reticle reticle_grass",
+    "cell_reticle reticle_cliff",
+    "cell_reticle reticle_chasm",
+    "cell_reticle reticle_mountain_tier1",
+    "cell_reticle reticle_mountain_tier2"
+];
+
 class frame_meta {
     frame_element;
     tiles_layer;
@@ -6,11 +44,13 @@ class frame_meta {
     water_layer;
     curves_layer;
     ramp_layer;
+    scatter_layer;
     bridges_layer;
     features_layer;
     player_layer;
     roof_layer;
     ambient_layer;
+    reticles_layer;
     player_avatar;
     player_rotator;
     frame_size_width = 0;
@@ -37,8 +77,11 @@ class frame_meta {
     tree_elements = new Array();
     flora_elements = new Array();
     roof_elements = new Array();
+    reticle_elements = new Array();
     elev2_layer;
     elev3_layer;
+    slot_reticle_state;
+    enable_grass_reticles = true;
 
     constructor(element, i_agent, interactive) {
         this.frame_element = element;
@@ -253,6 +296,56 @@ class frame_meta {
         // 5. Natural earthen slope waves for ramps
         defs.appendChild(createTerrainFilter("terrain_smooth_ramp", "0.040", "3.5", 1, "2.8", "fractalNoise"));
 
+        // SVG Symbols: Directional Prefab Cell Reticles (Phase 2 - Architecture 1: Restrained Plain Fills)
+        const addReticleSymbol = (id, fillD, strokeD) => {
+            var sym = create_svg_element("g");
+            sym.setAttribute("id", id);
+
+            // Plain fill restrained by the border boundary
+            var fillPath = create_svg_element("path");
+            fillPath.setAttribute("class", "reticle_fill");
+            fillPath.setAttribute("d", fillD);
+            sym.appendChild(fillPath);
+
+            // Directional border stroke path
+            var strokePath = create_svg_element("path");
+            strokePath.setAttribute("class", "reticle_path");
+            strokePath.setAttribute("d", strokeD);
+            sym.appendChild(strokePath);
+
+            defs.appendChild(sym);
+        };
+
+        // 1. Edge: fill from Y=1.5 down to Y=20, stroke along Y=1.5
+        addReticleSymbol("symbol_reticle_edge", 
+            "M 0 1.5 L 20 1.5 L 20 20 L 0 20 Z", 
+            "M 0 1.5 L 20 1.5"
+        );
+
+        // 2. Corner: fill restrained inside rounded L-bracket
+        addReticleSymbol("symbol_reticle_corner", 
+            "M 0 20 L 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z", 
+            "M 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20"
+        );
+
+        // 3. Parallel: fill between Y=1.5 and Y=18.5
+        addReticleSymbol("symbol_reticle_parallel", 
+            "M 0 1.5 L 20 1.5 L 20 18.5 L 0 18.5 Z", 
+            "M 0 1.5 L 20 1.5 M 0 18.5 L 20 18.5"
+        );
+
+        // 4. U-Shape: fill restrained inside U-cup
+        addReticleSymbol("symbol_reticle_u", 
+            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z", 
+            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20"
+        );
+
+        // 5. Island: fill restrained inside 4-corner rounded frame
+        addReticleSymbol("symbol_reticle_island", 
+            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z", 
+            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z"
+        );
+
         this.frame_element.appendChild(defs);
 
         // Master hardware-composited world viewport container
@@ -274,28 +367,48 @@ class frame_meta {
         this.bg_layer.appendChild(bgGridRect);
         this.world_viewport.appendChild(this.bg_layer);
 
-        // Layer 1: Vector Terrain Landmark Paths (Phase 6)
-        if (typeof TerrainPathService !== 'undefined' && typeof globalMapObject !== 'undefined' && globalMapObject) {
-            this.terrainPathService = new TerrainPathService(globalMapObject, this.cell_size);
-            this.terrainPathService.mountTerrainLayers(this);
-        }
-
         // Layer 2: Tiles layer for cell element click detection & interactive overlays (.path_step, .selectedDestination)
         this.tiles_layer = create_svg_element("g");
         this.tiles_layer.setAttribute("id", "tiles_layer");
-        this.tiles_layer.addEventListener("click", (e) => {
+        const onViewportClick = (e) => {
             var target = e.target;
             if (target && target.hasAttribute("meta-frame")) {
                 this.handleCellClick(target, e);
             }
-        });
+        };
+        this.tiles_layer.addEventListener("click", onViewportClick);
+        this.world_viewport.addEventListener("click", onViewportClick);
         this.world_viewport.appendChild(this.tiles_layer);
+
+        // Layer 2b: Reticles layer for directional ecotone cell borders (Architecture 1)
+        this.reticles_layer = create_svg_element("g");
+        this.reticles_layer.setAttribute("id", "reticles_layer");
+        this.reticles_layer.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.reticles_layer);
+
+        // Layer 2c: Dedicated Ramp Paths layer (overlaps all other terrain and reticles)
+        this.ramp_layer = create_svg_element("g");
+        this.ramp_layer.setAttribute("id", "world_ramp_paths");
+        this.ramp_layer.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.ramp_layer);
+
+        // Layer 2d: Dedicated Boundary Micro-Scatter Layer (Pebbles, Foam, Clovers, Wildflowers, Scree)
+        this.scatter_layer = create_svg_element("g");
+        this.scatter_layer.setAttribute("id", "scatter_layer");
+        this.scatter_layer.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.scatter_layer);
 
         // Layer 3: Bridges layer (Engineered bridges cleanly span over contours)
         this.bridges_layer = create_svg_element("g");
         this.bridges_layer.setAttribute("id", "bridges_layer");
         this.bridges_layer.style.pointerEvents = "none";
         this.world_viewport.appendChild(this.bridges_layer);
+
+        // Layer 1: Vector Terrain Landmark Paths (Phase 6)
+        if (typeof TerrainPathService !== 'undefined' && typeof globalMapObject !== 'undefined' && globalMapObject) {
+            this.terrainPathService = new TerrainPathService(globalMapObject, this.cell_size);
+            this.terrainPathService.mountTerrainLayers(this);
+        }
 
         // Layer 4: Organic features layer (Tree canopies & Riparian flora shrubs)
         this.features_layer = create_svg_element("g");
@@ -348,6 +461,7 @@ class frame_meta {
         this.tree_elements = new Array();
         this.flora_elements = new Array();
         this.roof_elements = new Array();
+        this.reticle_elements = new Array();
         this.layer_free_pools = new Map();
         this.all_cells = new Array();
         this.all_blocked_cells = new Array();
@@ -387,17 +501,21 @@ class frame_meta {
         }
         this.slot_state = new Int32Array(frame_count);
         this.slot_state.fill(-1);
+        this.slot_reticle_state = new Int16Array(frame_count);
+        this.slot_reticle_state.fill(-1);
 
         this.updateGrid(i_agent, interactive);
         this.prewarmSymbolPools();
     }
 
     prewarmSymbolPools() {
-        const warm = (pool, layer, href, count, cls) => {
+        const warm = (pool, layer, href, targetTotal, cls) => {
             var fp = this.getFreePool(pool);
-            for (var i = 0; i < count; i++) {
+            const toAdd = Math.max(0, targetTotal - layer.childElementCount);
+            for (var i = 0; i < toAdd; i++) {
                 var el = create_svg_element("use");
                 el.setAttribute("href", href);
+                el._lastHref = href;
                 if (cls) {
                     el.setAttribute("class", cls);
                     el._lastClass = cls;
@@ -409,9 +527,10 @@ class frame_meta {
             }
         };
         warm(this.bridge_elements, this.bridges_layer, "#symbol_tile", 120, "cell structure_path");
-        warm(this.tree_elements, this.features_layer, "#symbol_tree", 250, "cell_tree_feature");
-        warm(this.flora_elements, this.features_layer, "#symbol_flora", 150, "cell_flora_feature");
+        warm(this.tree_elements, this.features_layer, "#symbol_tree", 300, "cell_tree_feature");
+        warm(this.flora_elements, this.features_layer, "#symbol_flora", 200, "cell_flora_feature");
         warm(this.roof_elements, this.roof_layer, "#symbol_tile", 100, "cell_roof timber occluded");
+        warm(this.reticle_elements, this.reticles_layer, "#symbol_reticle_edge", 850, "cell_reticle reticle_sand");
     }
 
     getFreePool(pool) {
@@ -423,7 +542,28 @@ class frame_meta {
         return fp;
     }
 
-    ensureSymbolInstance(pool, layer, symbolHref, k, className) {
+    getReticleCategory(c) {
+        if (!c) return 0;
+        const f = c.flags;
+        const hasBldg = (f & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+        if (hasBldg) return 0;
+        if (f & CellFlags.TERRAIN_RAMP) return 0;
+
+        if (f & CellFlags.CHASM) return 6;
+        if (f & CellFlags.TERRAIN_CLIFF) return 5;
+        if (f & CellFlags.WATER_SHALLOW) return 3;
+        if (f & CellFlags.WATER) return 2;
+
+        const elev = c.elevation !== undefined ? c.elevation : 1;
+        if (elev >= 3) return 8; // Mountain Tier 2 (Peaks)
+        if (elev === 2) return 7; // Mountain Tier 1 (Highlands)
+
+        if (f & CellFlags.TERRAIN_SAND) return 1;
+        if (this.enable_grass_reticles && (f & (CellFlags.GRASS | CellFlags.TREE | CellFlags.TERRAIN_FLORA))) return 4;
+        return 0;
+    }
+
+    ensureSymbolInstance(pool, layer, symbolHref, k, className, transform = null) {
         var el = pool[k];
         if (!el) {
             var freePool = this.getFreePool(pool);
@@ -433,17 +573,14 @@ class frame_meta {
                     el.style.display = "block";
                     el._vis = true;
                 }
+                el.style.pointerEvents = "none";
             } else {
                 el = create_svg_element("use");
                 el.setAttribute("href", symbolHref);
+                el._lastHref = symbolHref;
                 el._vis = true;
+                el.style.pointerEvents = "none";
                 layer.appendChild(el);
-            }
-            el.setAttribute("x", this.slot_x[k]);
-            el.setAttribute("y", this.slot_y[k]);
-            if (className && el._lastClass !== className) {
-                el.setAttribute("class", className);
-                el._lastClass = className;
             }
             pool[k] = el;
         } else {
@@ -451,10 +588,30 @@ class frame_meta {
                 el.style.display = "block";
                 el._vis = true;
             }
-            if (className && el._lastClass !== className) {
-                el.setAttribute("class", className);
-                el._lastClass = className;
+        }
+
+        if (el._lastHref !== symbolHref) {
+            el.setAttribute("href", symbolHref);
+            el._lastHref = symbolHref;
+        }
+
+        if (transform) {
+            if (el._lastTf !== transform) {
+                el.setAttribute("transform", transform);
+                el._lastTf = transform;
             }
+            if (el.hasAttribute("x")) el.removeAttribute("x");
+            if (el.hasAttribute("y")) el.removeAttribute("y");
+        } else {
+            if (el.getAttribute("x") !== this.slot_x[k]) el.setAttribute("x", this.slot_x[k]);
+            if (el.getAttribute("y") !== this.slot_y[k]) el.setAttribute("y", this.slot_y[k]);
+            if (el.hasAttribute("transform")) el.removeAttribute("transform");
+            el._lastTf = null;
+        }
+
+        if (className && el._lastClass !== className) {
+            el.setAttribute("class", className);
+            el._lastClass = className;
         }
         return el;
     }
@@ -552,6 +709,9 @@ class frame_meta {
         for (var i = -pad; i <= this.cell_size_x + pad; i++) {
             var map_x = i - vector_horizontal;
             var colCells = mapCells[map_x];
+            var prevCol = mapCells[map_x - 1];
+            var nextCol = mapCells[map_x + 1];
+            var sx = i * this.cell_size;
             for (var j = -pad; j <= this.cell_size_y + pad; j++) {
                 var map_y = j - vector_vertical;
                 var cell_object;
@@ -579,6 +739,36 @@ class frame_meta {
                 if (this.slot_state[frame_count] !== stateKey || stateKey === -1 || cell_element._lastClass === null) {
                     this.slot_state[frame_count] = stateKey;
                     this.changed_slots[changedCount++] = frame_count;
+                }
+
+                // Directional Prefab Reticle Evaluation (Architecture 1)
+                const cat = this.getReticleCategory(cell_object);
+                let reticleKey = 0;
+                if (cat > 0) {
+                    const catN = colCells ? this.getReticleCategory(colCells[map_y - 1]) : 0;
+                    const catE = nextCol ? this.getReticleCategory(nextCol[map_y]) : 0;
+                    const catS = colCells ? this.getReticleCategory(colCells[map_y + 1]) : 0;
+                    const catW = prevCol ? this.getReticleCategory(prevCol[map_y]) : 0;
+
+                    const mask = (catN !== cat ? 1 : 0) | (catE !== cat ? 2 : 0) | (catS !== cat ? 4 : 0) | (catW !== cat ? 8 : 0);
+                    if (mask > 0) {
+                        reticleKey = (cat << 4) | mask;
+                    }
+                }
+
+                if (this.slot_reticle_state[frame_count] !== reticleKey) {
+                    this.slot_reticle_state[frame_count] = reticleKey;
+                    if (reticleKey === 0) {
+                        this.hideSymbolInstance(this.reticle_elements, frame_count);
+                    } else {
+                        const mask = reticleKey & 0xF;
+                        const sym = RETICLE_SYMBOLS[mask];
+                        const ang = RETICLE_ANGLES[mask];
+                        const cls = RETICLE_CLASSES[cat];
+                        const sy = j * this.cell_size;
+                        const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
+                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, tf);
+                    }
                 }
 
                 frame_count++;
@@ -673,6 +863,7 @@ class frame_meta {
         };
         toggleLayerVis(this.bridges_layer, this.bridge_elements);
         toggleLayerVis(this.roof_layer, this.roof_elements);
+        toggleLayerVis(this.reticles_layer, this.reticle_elements);
 
         if (this.ambient_layer) {
             const ambCls = occupiedStructure ? "ambient_interior active" : "ambient_interior inactive";
@@ -715,4 +906,11 @@ class frame_meta {
             i_agent.agentCellOccupied = this.all_cells[0];
         }
     }
+}
+
+if (typeof window !== 'undefined') {
+    window.frame_meta = frame_meta;
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { frame_meta, RETICLE_SYMBOLS, RETICLE_ANGLES, RETICLE_CLASSES };
 }
