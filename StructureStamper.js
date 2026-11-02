@@ -260,6 +260,9 @@ class StructureStamper {
 
         // Re-render active grid if player is present
         if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+            if (globalGridObject.terrainPathService) {
+                globalGridObject.terrainPathService.rebuildTerrainPaths(map, globalGridObject);
+            }
             globalGridObject.updateGrid(agent, true);
         }
 

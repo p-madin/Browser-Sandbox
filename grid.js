@@ -88,33 +88,136 @@ class frame_meta {
         addGradientStop(gradTree, "100%", "#052e16");
         defs.appendChild(gradTree);
 
-        // SVG Metasurface / Metaball Organic Fusion Filter with Natural Procedural Waves
-        const createTerrainFilter = (id, baseFreq, scale, octaves = 2, blurDev = "2.2", type = "fractalNoise") => {
+        // SVG Symbol: Organic Tree Feature (Instanced via <use>)
+        var symTree = create_svg_element("g");
+        symTree.setAttribute("id", "symbol_tree");
+        var symTreeShadow = create_svg_element("circle");
+        symTreeShadow.setAttribute("cx", (this.cell_size / 2) + "px");
+        symTreeShadow.setAttribute("cy", (this.cell_size / 2 + 1.5) + "px");
+        symTreeShadow.setAttribute("r", (this.cell_size * 0.40) + "px");
+        symTreeShadow.setAttribute("class", "tree_shadow");
+        symTree.appendChild(symTreeShadow);
+        var symTreeCanopy = create_svg_element("circle");
+        symTreeCanopy.setAttribute("cx", (this.cell_size / 2) + "px");
+        symTreeCanopy.setAttribute("cy", (this.cell_size / 2) + "px");
+        symTreeCanopy.setAttribute("r", (this.cell_size * 0.38) + "px");
+        symTreeCanopy.setAttribute("class", "tree_canopy");
+        symTree.appendChild(symTreeCanopy);
+        var symTreeTrunk = create_svg_element("circle");
+        symTreeTrunk.setAttribute("cx", (this.cell_size / 2) + "px");
+        symTreeTrunk.setAttribute("cy", (this.cell_size / 2) + "px");
+        symTreeTrunk.setAttribute("r", (this.cell_size * 0.10) + "px");
+        symTreeTrunk.setAttribute("class", "tree_trunk");
+        symTree.appendChild(symTreeTrunk);
+        defs.appendChild(symTree);
+
+        // SVG Symbol: Riparian Flora Shrub / Bush Feature (Instanced via <use>)
+        var symFlora = create_svg_element("g");
+        symFlora.setAttribute("id", "symbol_flora");
+        var symShrubShadow = create_svg_element("ellipse");
+        symShrubShadow.setAttribute("cx", (this.cell_size / 2) + "px");
+        symShrubShadow.setAttribute("cy", (this.cell_size / 2 + 1.5) + "px");
+        symShrubShadow.setAttribute("rx", (this.cell_size * 0.28) + "px");
+        symShrubShadow.setAttribute("ry", (this.cell_size * 0.20) + "px");
+        symShrubShadow.setAttribute("class", "shrub_shadow");
+        symFlora.appendChild(symShrubShadow);
+        var symFloraBase = create_svg_element("circle");
+        symFloraBase.setAttribute("cx", (this.cell_size / 2 - 1.5) + "px");
+        symFloraBase.setAttribute("cy", (this.cell_size / 2 + 0.5) + "px");
+        symFloraBase.setAttribute("r", (this.cell_size * 0.18) + "px");
+        symFloraBase.setAttribute("class", "flora_shrub");
+        symFlora.appendChild(symFloraBase);
+        var symFloraMain = create_svg_element("circle");
+        symFloraMain.setAttribute("cx", (this.cell_size / 2 + 1) + "px");
+        symFloraMain.setAttribute("cy", (this.cell_size / 2 - 0.5) + "px");
+        symFloraMain.setAttribute("r", (this.cell_size * 0.22) + "px");
+        symFloraMain.setAttribute("class", "flora_shrub");
+        symFlora.appendChild(symFloraMain);
+        var symFloraHighlight = create_svg_element("circle");
+        symFloraHighlight.setAttribute("cx", (this.cell_size / 2 + 0.2) + "px");
+        symFloraHighlight.setAttribute("cy", (this.cell_size / 2 - 1.8) + "px");
+        symFloraHighlight.setAttribute("r", (this.cell_size * 0.08) + "px");
+        symFloraHighlight.setAttribute("class", "flora_highlight");
+        symFlora.appendChild(symFloraHighlight);
+        defs.appendChild(symFlora);
+
+        // SVG Symbol: Shared Organic Terrain Contour Geometry (Instanced via <use> across 7 contour layers)
+        var symContour = create_svg_element("rect");
+        symContour.setAttribute("id", "symbol_contour");
+        symContour.setAttribute("x", "-1.25px");
+        symContour.setAttribute("y", "-1.25px");
+        symContour.setAttribute("width", (this.cell_size + 2.5) + "px");
+        symContour.setAttribute("height", (this.cell_size + 2.5) + "px");
+        symContour.setAttribute("rx", "4.5px");
+        symContour.setAttribute("ry", "4.5px");
+        defs.appendChild(symContour);
+
+        // SVG Symbol: Shared Unit Tile Geometry (Instanced via <use> across bridges & roofs)
+        var symTile = create_svg_element("rect");
+        symTile.setAttribute("id", "symbol_tile");
+        symTile.setAttribute("width", this.cell_size + "px");
+        symTile.setAttribute("height", this.cell_size + "px");
+        defs.appendChild(symTile);
+
+        // SVG Pattern Symbol: Hardware-tiled base grid background (replaces 5,562 individual cell stroke/fill draws)
+        var gridPattern = create_svg_element("pattern");
+        gridPattern.setAttribute("id", "symbol_grid_pattern");
+        gridPattern.setAttribute("width", this.cell_size + "px");
+        gridPattern.setAttribute("height", this.cell_size + "px");
+        gridPattern.setAttribute("patternUnits", "userSpaceOnUse");
+        var gridPatRect = create_svg_element("rect");
+        gridPatRect.setAttribute("width", this.cell_size + "px");
+        gridPatRect.setAttribute("height", this.cell_size + "px");
+        gridPatRect.setAttribute("fill", "rgba(145, 255, 86, 0.3)");
+        gridPatRect.setAttribute("stroke", "rgba(0, 0, 0, 0.15)");
+        gridPatRect.setAttribute("stroke-width", "0.5px");
+        gridPattern.appendChild(gridPatRect);
+        defs.appendChild(gridPattern);
+
+        // SVG Symbol: Player Avatar Composite Geometry (5 primitives instanced via <use>)
+        var symPlayer = create_svg_element("g");
+        symPlayer.setAttribute("id", "symbol_player_body");
+        var pShadow = create_svg_element("circle");
+        pShadow.setAttribute("class", "player_shadow");
+        pShadow.setAttribute("cx", "0");
+        pShadow.setAttribute("cy", "2");
+        pShadow.setAttribute("r", "7.5");
+        symPlayer.appendChild(pShadow);
+        var ring = create_svg_element("circle");
+        ring.setAttribute("class", "player_ring");
+        ring.setAttribute("cx", "0");
+        ring.setAttribute("cy", "0");
+        ring.setAttribute("r", "8.5");
+        symPlayer.appendChild(ring);
+        var body = create_svg_element("circle");
+        body.setAttribute("class", "player_body");
+        body.setAttribute("cx", "0");
+        body.setAttribute("cy", "0");
+        body.setAttribute("r", "6.5");
+        symPlayer.appendChild(body);
+        var visor = create_svg_element("path");
+        visor.setAttribute("class", "player_visor");
+        visor.setAttribute("d", "M 1 -4.5 L 8.5 0 L 1 4.5 L 3 0 Z");
+        symPlayer.appendChild(visor);
+        var core = create_svg_element("circle");
+        core.setAttribute("class", "player_core");
+        core.setAttribute("cx", "0");
+        core.setAttribute("cy", "0");
+        core.setAttribute("r", "2");
+        symPlayer.appendChild(core);
+        defs.appendChild(symPlayer);
+
+        // SVG Metasurface / Metaball Organic Fusion Filter (GPU-accelerated Gaussian + Alpha Threshold)
+        const createTerrainFilter = (id, baseFreq, scale, octaves = 1, blurDev = "3.2", type = "fractalNoise") => {
             var f = create_svg_element("filter");
             f.setAttribute("id", id);
-            f.setAttribute("x", "-20%");
-            f.setAttribute("y", "-20%");
-            f.setAttribute("width", "140%");
-            f.setAttribute("height", "140%");
-
-            var turb = create_svg_element("feTurbulence");
-            turb.setAttribute("type", type);
-            turb.setAttribute("baseFrequency", baseFreq);
-            turb.setAttribute("numOctaves", octaves);
-            turb.setAttribute("result", "turb");
-            f.appendChild(turb);
-
-            var disp = create_svg_element("feDisplacementMap");
-            disp.setAttribute("in", "SourceGraphic");
-            disp.setAttribute("in2", "turb");
-            disp.setAttribute("scale", scale);
-            disp.setAttribute("xChannelSelector", "R");
-            disp.setAttribute("yChannelSelector", "G");
-            disp.setAttribute("result", "disp");
-            f.appendChild(disp);
+            f.setAttribute("x", "-5%");
+            f.setAttribute("y", "-5%");
+            f.setAttribute("width", "110%");
+            f.setAttribute("height", "110%");
 
             var blur = create_svg_element("feGaussianBlur");
-            blur.setAttribute("in", "disp");
+            blur.setAttribute("in", "SourceGraphic");
             blur.setAttribute("stdDeviation", blurDev);
             blur.setAttribute("result", "blur");
             f.appendChild(blur);
@@ -122,7 +225,7 @@ class frame_meta {
             var mat = create_svg_element("feColorMatrix");
             mat.setAttribute("in", "blur");
             mat.setAttribute("mode", "matrix");
-            mat.setAttribute("values", "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -9");
+            mat.setAttribute("values", "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -7");
             mat.setAttribute("result", "fused");
             f.appendChild(mat);
 
@@ -130,93 +233,75 @@ class frame_meta {
         };
 
         // 1. Organic rolling meadow waves for grass
-        defs.appendChild(createTerrainFilter("terrain_smooth_grass", "0.035", "4.0", 2, "15.5", "fractalNoise"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_grass", "0.035", "4.0", 1, "3.2", "fractalNoise"));
 
         // 1b. Mountain highlands plateau (1st layer mountain)
-        defs.appendChild(createTerrainFilter("terrain_smooth_elev2", "0.038", "4.2", 2, "15.5", "fractalNoise"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_elev2", "0.038", "4.2", 1, "3.2", "fractalNoise"));
 
         // 1c. Mountain crags & peaks (2nd layer mountain)
-        defs.appendChild(createTerrainFilter("terrain_smooth_elev3", "0.045", "4.5", 2, "14.0", "fractalNoise"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_elev3", "0.045", "4.5", 1, "3.2", "fractalNoise"));
 
         // 2. Gentle meandering fluid waves for rivers
-        defs.appendChild(createTerrainFilter("terrain_smooth_water", "0.025", "3.5", 2, "15.5", "fractalNoise"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_water", "0.025", "3.5", 1, "3.2", "fractalNoise"));
 
         // 3. Craggy, jagged tectonic fracture noise for canyons
-        defs.appendChild(createTerrainFilter("terrain_smooth_chasm", "0.060", "5.0", 3, "15.2", "turbulence"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_chasm", "0.060", "5.0", 2, "3.2", "turbulence"));
 
         // 4. Rocky escarpment fracture noise for cliffs
-        defs.appendChild(createTerrainFilter("terrain_smooth_cliff", "0.050", "4.2", 2, "15.8", "turbulence"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_cliff", "0.050", "4.2", 1, "3.2", "turbulence"));
 
         // 5. Natural earthen slope waves for ramps
-        defs.appendChild(createTerrainFilter("terrain_smooth_ramp", "0.040", "3.5", 2, "5.8", "fractalNoise"));
+        defs.appendChild(createTerrainFilter("terrain_smooth_ramp", "0.040", "3.5", 1, "2.8", "fractalNoise"));
 
         this.frame_element.appendChild(defs);
 
-        // Layer 1: Tiles layer for world tiles with smooth transform
+        // Master hardware-composited world viewport container
+        this.world_viewport = create_svg_element("g");
+        this.world_viewport.setAttribute("id", "world_viewport");
+        this.world_viewport.style.willChange = "transform";
+        this.frame_element.appendChild(this.world_viewport);
+
+        // Layer 0: Background grid pattern rect
+        this.bg_layer = create_svg_element("g");
+        this.bg_layer.setAttribute("id", "bg_layer");
+        var bgGridRect = create_svg_element("rect");
+        bgGridRect.setAttribute("x", (-pad * this.cell_size) + "px");
+        bgGridRect.setAttribute("y", (-pad * this.cell_size) + "px");
+        bgGridRect.setAttribute("width", ((this.cell_size_x + 2 * pad + 1) * this.cell_size) + "px");
+        bgGridRect.setAttribute("height", ((this.cell_size_y + 2 * pad + 1) * this.cell_size) + "px");
+        bgGridRect.setAttribute("fill", "url(#symbol_grid_pattern)");
+        bgGridRect.style.pointerEvents = "none";
+        this.bg_layer.appendChild(bgGridRect);
+        this.world_viewport.appendChild(this.bg_layer);
+
+        // Layer 1: Vector Terrain Landmark Paths (Phase 6)
+        if (typeof TerrainPathService !== 'undefined' && typeof globalMapObject !== 'undefined' && globalMapObject) {
+            this.terrainPathService = new TerrainPathService(globalMapObject, this.cell_size);
+            this.terrainPathService.mountTerrainLayers(this);
+        }
+
+        // Layer 2: Tiles layer for cell element click detection & interactive overlays (.path_step, .selectedDestination)
         this.tiles_layer = create_svg_element("g");
         this.tiles_layer.setAttribute("id", "tiles_layer");
-        this.frame_element.appendChild(this.tiles_layer);
+        this.tiles_layer.addEventListener("click", (e) => {
+            var target = e.target;
+            if (target && target.hasAttribute("meta-frame")) {
+                this.handleCellClick(target, e);
+            }
+        });
+        this.world_viewport.appendChild(this.tiles_layer);
 
-        // Layer 1a: Canyon chasm contour curves layer (Craggy tectonic metasurface)
-        this.chasm_layer = create_svg_element("g");
-        this.chasm_layer.setAttribute("id", "chasm_layer");
-        this.chasm_layer.setAttribute("filter", "url(#terrain_smooth_chasm)");
-        this.chasm_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.chasm_layer);
-
-        // Layer 1b: Rocky cliff flank contour layer (Fractured escarpment metasurface)
-        this.cliff_layer = create_svg_element("g");
-        this.cliff_layer.setAttribute("id", "cliff_layer");
-        this.cliff_layer.setAttribute("filter", "url(#terrain_smooth_cliff)");
-        this.cliff_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.cliff_layer);
-
-        // Layer 1c: River water contour curves layer (Meandering fluid metasurface)
-        this.water_layer = create_svg_element("g");
-        this.water_layer.setAttribute("id", "water_layer");
-        this.water_layer.setAttribute("filter", "url(#terrain_smooth_water)");
-        this.water_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.water_layer);
-
-        // Layer 1d: Terrain contour curves layer (Organic rolling meadow metasurface)
-        this.curves_layer = create_svg_element("g");
-        this.curves_layer.setAttribute("id", "curves_layer");
-        this.curves_layer.setAttribute("filter", "url(#terrain_smooth_grass)");
-        this.curves_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.curves_layer);
-
-        // Layer 1d-2: Mountain Highlands Contour layer (1st layer mountain plateau)
-        this.elev2_layer = create_svg_element("g");
-        this.elev2_layer.setAttribute("id", "elev2_layer");
-        this.elev2_layer.setAttribute("filter", "url(#terrain_smooth_elev2)");
-        this.elev2_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.elev2_layer);
-
-        // Layer 1d-3: Mountain Peaks Contour layer (2nd layer mountain crags)
-        this.elev3_layer = create_svg_element("g");
-        this.elev3_layer.setAttribute("id", "elev3_layer");
-        this.elev3_layer.setAttribute("filter", "url(#terrain_smooth_elev3)");
-        this.elev3_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.elev3_layer);
-
-        // Layer 1e: Terrain ramp contour layer (Earthen slope metasurface)
-        this.ramp_layer = create_svg_element("g");
-        this.ramp_layer.setAttribute("id", "ramp_layer");
-        this.ramp_layer.setAttribute("filter", "url(#terrain_smooth_ramp)");
-        this.ramp_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.ramp_layer);
-
-        // Layer 1f: Bridges layer (Engineered bridges cleanly span over contours)
+        // Layer 3: Bridges layer (Engineered bridges cleanly span over contours)
         this.bridges_layer = create_svg_element("g");
         this.bridges_layer.setAttribute("id", "bridges_layer");
         this.bridges_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.bridges_layer);
+        this.world_viewport.appendChild(this.bridges_layer);
 
-        // Layer 1e: Organic features layer (Tree canopies & Riparian flora shrubs)
+        // Layer 4: Organic features layer (Tree canopies & Riparian flora shrubs)
         this.features_layer = create_svg_element("g");
         this.features_layer.setAttribute("id", "features_layer");
         this.features_layer.style.pointerEvents = "none";
-        this.frame_element.appendChild(this.features_layer);
+        this.world_viewport.appendChild(this.features_layer);
 
         // Layer 2: Player layer for avatar
         this.player_layer = create_svg_element("g");
@@ -227,6 +312,7 @@ class frame_meta {
         this.roof_layer = create_svg_element("g");
         this.roof_layer.setAttribute("id", "roof_layer");
         this.roof_layer.style.pointerEvents = "none";
+        this.roof_layer.style.willChange = "transform";
         this.frame_element.appendChild(this.roof_layer);
 
         // Layer 4: Ambient interior lighting / vignette layer (Phase 4)
@@ -246,6 +332,11 @@ class frame_meta {
         this.buildPlayerAvatar();
 
         this.rect_elements = new Array();
+        this.slot_x = new Array();
+        this.slot_y = new Array();
+        this.slot_contour_x = new Array();
+        this.slot_contour_y = new Array();
+        this.slot_state = new Int32Array(0);
         this.chasm_elements = new Array();
         this.cliff_elements = new Array();
         this.water_elements = new Array();
@@ -257,6 +348,7 @@ class frame_meta {
         this.tree_elements = new Array();
         this.flora_elements = new Array();
         this.roof_elements = new Array();
+        this.layer_free_pools = new Map();
         this.all_cells = new Array();
         this.all_blocked_cells = new Array();
 
@@ -264,219 +356,27 @@ class frame_meta {
         var pad = 3;
         var frame_count = 0;
         for (var i = -pad; i <= this.cell_size_x + pad; i++) {
+            var px = (i * this.cell_size) + "px";
+            var cpx = (i * this.cell_size - 0.75) + "px";
             for (var j = -pad; j <= this.cell_size_y + pad; j++) {
+                var py = (j * this.cell_size) + "px";
+                var cpy = (j * this.cell_size - 0.75) + "px";
+                this.slot_x[frame_count] = px;
+                this.slot_y[frame_count] = py;
+                this.slot_contour_x[frame_count] = cpx;
+                this.slot_contour_y[frame_count] = cpy;
+
                 var cell_element = create_svg_element("rect");
                 cell_element.setAttribute('meta-frame', frame_count);
                 cell_element.setAttribute('class', "cell");
-                cell_element.setAttribute('x', (i * this.cell_size) + "px");
-                cell_element.setAttribute('y', (j * this.cell_size) + "px");
-                cell_element.setAttribute('height', this.cell_size + "px");
+                cell_element._lastClass = "cell";
+                cell_element.setAttribute('x', px);
+                cell_element.setAttribute('y', py);
                 cell_element.setAttribute('width', this.cell_size + "px");
-
-                cell_element.addEventListener("click", this.handleCellClick.bind(this, cell_element));
+                cell_element.setAttribute('height', this.cell_size + "px");
 
                 this.tiles_layer.appendChild(cell_element);
                 this.rect_elements[frame_count] = cell_element;
-
-                // Organic canyon chasm contour element (Fused organic metasurface)
-                var chasm_element = create_svg_element("rect");
-                chasm_element.setAttribute('meta-chasm-frame', frame_count);
-                chasm_element.setAttribute('class', "terrain_contour contour_chasm");
-                chasm_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                chasm_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                chasm_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                chasm_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                chasm_element.setAttribute('rx', "3px");
-                chasm_element.setAttribute('ry', "3px");
-                chasm_element.style.display = "none";
-                chasm_element.style.pointerEvents = "none";
-                this.chasm_layer.appendChild(chasm_element);
-                this.chasm_elements[frame_count] = chasm_element;
-
-                // Organic rocky cliff contour element (Fractured escarpment metasurface)
-                var cliff_element = create_svg_element("rect");
-                cliff_element.setAttribute('meta-cliff-frame', frame_count);
-                cliff_element.setAttribute('class', "terrain_contour contour_cliff");
-                cliff_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                cliff_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                cliff_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                cliff_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                cliff_element.setAttribute('rx', "3px");
-                cliff_element.setAttribute('ry', "3px");
-                cliff_element.style.display = "none";
-                cliff_element.style.pointerEvents = "none";
-                this.cliff_layer.appendChild(cliff_element);
-                this.cliff_elements[frame_count] = cliff_element;
-
-                // Organic river water contour element (Fused organic metasurface)
-                var water_element = create_svg_element("rect");
-                water_element.setAttribute('meta-water-frame', frame_count);
-                water_element.setAttribute('class', "terrain_contour contour_water");
-                water_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                water_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                water_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                water_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                water_element.setAttribute('rx', "3px");
-                water_element.setAttribute('ry', "3px");
-                water_element.style.display = "none";
-                water_element.style.pointerEvents = "none";
-                this.water_layer.appendChild(water_element);
-                this.water_elements[frame_count] = water_element;
-
-                // Organic terrain contour element (Fused organic metasurface)
-                var contour_element = create_svg_element("rect");
-                contour_element.setAttribute('meta-contour-frame', frame_count);
-                contour_element.setAttribute('class', "terrain_contour");
-                contour_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                contour_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                contour_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                contour_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                contour_element.setAttribute('rx', "3px");
-                contour_element.setAttribute('ry', "3px");
-                contour_element.style.display = "none";
-                contour_element.style.pointerEvents = "none";
-                this.curves_layer.appendChild(contour_element);
-                this.contour_elements[frame_count] = contour_element;
-
-                // Organic mountain highlands contour element (1st layer mountain plateau)
-                var elev2_element = create_svg_element("rect");
-                elev2_element.setAttribute('meta-elev2-frame', frame_count);
-                elev2_element.setAttribute('class', "terrain_contour contour_elev_2");
-                elev2_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                elev2_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                elev2_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                elev2_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                elev2_element.setAttribute('rx', "3px");
-                elev2_element.setAttribute('ry', "3px");
-                elev2_element.style.display = "none";
-                elev2_element.style.pointerEvents = "none";
-                this.elev2_layer.appendChild(elev2_element);
-                this.elev2_elements[frame_count] = elev2_element;
-
-                // Organic mountain peaks contour element (2nd layer mountain crags)
-                var elev3_element = create_svg_element("rect");
-                elev3_element.setAttribute('meta-elev3-frame', frame_count);
-                elev3_element.setAttribute('class', "terrain_contour contour_elev_3");
-                elev3_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                elev3_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                elev3_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                elev3_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                elev3_element.setAttribute('rx', "3px");
-                elev3_element.setAttribute('ry', "3px");
-                elev3_element.style.display = "none";
-                elev3_element.style.pointerEvents = "none";
-                this.elev3_layer.appendChild(elev3_element);
-                this.elev3_elements[frame_count] = elev3_element;
-
-                // Organic earthen ramp contour element (Earthen slope metasurface)
-                var ramp_element = create_svg_element("rect");
-                ramp_element.setAttribute('meta-ramp-frame', frame_count);
-                ramp_element.setAttribute('class', "terrain_contour contour_ramp");
-                ramp_element.setAttribute('x', (i * this.cell_size - 0.75) + "px");
-                ramp_element.setAttribute('y', (j * this.cell_size - 0.75) + "px");
-                ramp_element.setAttribute('width', (this.cell_size + 1.5) + "px");
-                ramp_element.setAttribute('height', (this.cell_size + 1.5) + "px");
-                ramp_element.setAttribute('rx', "3px");
-                ramp_element.setAttribute('ry', "3px");
-                ramp_element.style.display = "none";
-                ramp_element.style.pointerEvents = "none";
-                this.ramp_layer.appendChild(ramp_element);
-                this.ramp_elements[frame_count] = ramp_element;
-
-                // Engineered bridge span overlay element
-                var bridge_element = create_svg_element("rect");
-                bridge_element.setAttribute('meta-bridge-frame', frame_count);
-                bridge_element.setAttribute('x', (i * this.cell_size) + "px");
-                bridge_element.setAttribute('y', (j * this.cell_size) + "px");
-                bridge_element.setAttribute('height', this.cell_size + "px");
-                bridge_element.setAttribute('width', this.cell_size + "px");
-                bridge_element.style.display = "none";
-                bridge_element.style.pointerEvents = "none";
-                this.bridges_layer.appendChild(bridge_element);
-                this.bridge_elements[frame_count] = bridge_element;
-
-                // Circular tree canopy feature element (nested within grass ground)
-                var tree_element = create_svg_element("g");
-                tree_element.setAttribute('meta-tree-frame', frame_count);
-                tree_element.setAttribute('class', "cell_tree_feature");
-                tree_element.style.display = "none";
-                tree_element.style.pointerEvents = "none";
-
-                var tree_shadow = create_svg_element("circle");
-                tree_shadow.setAttribute('cx', (i * this.cell_size + this.cell_size / 2) + "px");
-                tree_shadow.setAttribute('cy', (j * this.cell_size + this.cell_size / 2 + 1.5) + "px");
-                tree_shadow.setAttribute('r', (this.cell_size * 0.40) + "px");
-                tree_shadow.setAttribute('class', "tree_shadow");
-                tree_element.appendChild(tree_shadow);
-
-                var tree_canopy = create_svg_element("circle");
-                tree_canopy.setAttribute('cx', (i * this.cell_size + this.cell_size / 2) + "px");
-                tree_canopy.setAttribute('cy', (j * this.cell_size + this.cell_size / 2) + "px");
-                tree_canopy.setAttribute('r', (this.cell_size * 0.38) + "px");
-                tree_canopy.setAttribute('class', "tree_canopy");
-                tree_element.appendChild(tree_canopy);
-
-                var tree_trunk = create_svg_element("circle");
-                tree_trunk.setAttribute('cx', (i * this.cell_size + this.cell_size / 2) + "px");
-                tree_trunk.setAttribute('cy', (j * this.cell_size + this.cell_size / 2) + "px");
-                tree_trunk.setAttribute('r', (this.cell_size * 0.10) + "px");
-                tree_trunk.setAttribute('class', "tree_trunk");
-                tree_element.appendChild(tree_trunk);
-
-                this.features_layer.appendChild(tree_element);
-                this.tree_elements[frame_count] = tree_element;
-
-                // Standalone Riparian Flora shrub/bush feature element
-                var flora_element = create_svg_element("g");
-                flora_element.setAttribute('meta-flora-frame', frame_count);
-                flora_element.setAttribute('class', "cell_flora_feature");
-                flora_element.style.display = "none";
-                flora_element.style.pointerEvents = "none";
-
-                var shrub_shadow = create_svg_element("ellipse");
-                shrub_shadow.setAttribute('cx', (i * this.cell_size + this.cell_size / 2) + "px");
-                shrub_shadow.setAttribute('cy', (j * this.cell_size + this.cell_size / 2 + 1.5) + "px");
-                shrub_shadow.setAttribute('rx', (this.cell_size * 0.28) + "px");
-                shrub_shadow.setAttribute('ry', (this.cell_size * 0.20) + "px");
-                shrub_shadow.setAttribute('class', "shrub_shadow");
-                flora_element.appendChild(shrub_shadow);
-
-                var flora_shrub_base = create_svg_element("circle");
-                flora_shrub_base.setAttribute('cx', (i * this.cell_size + this.cell_size / 2 - 1.5) + "px");
-                flora_shrub_base.setAttribute('cy', (j * this.cell_size + this.cell_size / 2 + 0.5) + "px");
-                flora_shrub_base.setAttribute('r', (this.cell_size * 0.18) + "px");
-                flora_shrub_base.setAttribute('class', "flora_shrub");
-                flora_element.appendChild(flora_shrub_base);
-
-                var flora_shrub = create_svg_element("circle");
-                flora_shrub.setAttribute('cx', (i * this.cell_size + this.cell_size / 2 + 1) + "px");
-                flora_shrub.setAttribute('cy', (j * this.cell_size + this.cell_size / 2 - 0.5) + "px");
-                flora_shrub.setAttribute('r', (this.cell_size * 0.22) + "px");
-                flora_shrub.setAttribute('class', "flora_shrub");
-                flora_element.appendChild(flora_shrub);
-
-                var flora_highlight = create_svg_element("circle");
-                flora_highlight.setAttribute('cx', (i * this.cell_size + this.cell_size / 2 + 0.2) + "px");
-                flora_highlight.setAttribute('cy', (j * this.cell_size + this.cell_size / 2 - 1.8) + "px");
-                flora_highlight.setAttribute('r', (this.cell_size * 0.08) + "px");
-                flora_highlight.setAttribute('class', "flora_highlight");
-                flora_element.appendChild(flora_highlight);
-
-                this.features_layer.appendChild(flora_element);
-                this.flora_elements[frame_count] = flora_element;
-
-                // Overhead roof element in secondary virtual layer
-                var roof_element = create_svg_element("rect");
-                roof_element.setAttribute('meta-roof-frame', frame_count);
-                roof_element.setAttribute('class', "cell_roof");
-                roof_element.setAttribute('x', (i * this.cell_size) + "px");
-                roof_element.setAttribute('y', (j * this.cell_size) + "px");
-                roof_element.setAttribute('height', this.cell_size + "px");
-                roof_element.setAttribute('width', this.cell_size + "px");
-                roof_element.style.pointerEvents = "none";
-
-                this.roof_layer.appendChild(roof_element);
-                this.roof_elements[frame_count] = roof_element;
 
                 if (i === this.grid_mid_x && j === this.grid_mid_y) {
                     this.grid_mid_cell = frame_count;
@@ -485,8 +385,98 @@ class frame_meta {
                 frame_count++;
             }
         }
+        this.slot_state = new Int32Array(frame_count);
+        this.slot_state.fill(-1);
 
         this.updateGrid(i_agent, interactive);
+        this.prewarmSymbolPools();
+    }
+
+    prewarmSymbolPools() {
+        const warm = (pool, layer, href, count, cls) => {
+            var fp = this.getFreePool(pool);
+            for (var i = 0; i < count; i++) {
+                var el = create_svg_element("use");
+                el.setAttribute("href", href);
+                if (cls) {
+                    el.setAttribute("class", cls);
+                    el._lastClass = cls;
+                }
+                el.style.display = "none";
+                el._vis = false;
+                layer.appendChild(el);
+                fp.push(el);
+            }
+        };
+        warm(this.bridge_elements, this.bridges_layer, "#symbol_tile", 120, "cell structure_path");
+        warm(this.tree_elements, this.features_layer, "#symbol_tree", 250, "cell_tree_feature");
+        warm(this.flora_elements, this.features_layer, "#symbol_flora", 150, "cell_flora_feature");
+        warm(this.roof_elements, this.roof_layer, "#symbol_tile", 100, "cell_roof timber occluded");
+    }
+
+    getFreePool(pool) {
+        var fp = this.layer_free_pools.get(pool);
+        if (!fp) {
+            fp = [];
+            this.layer_free_pools.set(pool, fp);
+        }
+        return fp;
+    }
+
+    ensureSymbolInstance(pool, layer, symbolHref, k, className) {
+        var el = pool[k];
+        if (!el) {
+            var freePool = this.getFreePool(pool);
+            if (freePool.length > 0) {
+                el = freePool.pop();
+                if (!el._vis) {
+                    el.style.display = "block";
+                    el._vis = true;
+                }
+            } else {
+                el = create_svg_element("use");
+                el.setAttribute("href", symbolHref);
+                el._vis = true;
+                layer.appendChild(el);
+            }
+            el.setAttribute("x", this.slot_x[k]);
+            el.setAttribute("y", this.slot_y[k]);
+            if (className && el._lastClass !== className) {
+                el.setAttribute("class", className);
+                el._lastClass = className;
+            }
+            pool[k] = el;
+        } else {
+            if (!el._vis) {
+                el.style.display = "block";
+                el._vis = true;
+            }
+            if (className && el._lastClass !== className) {
+                el.setAttribute("class", className);
+                el._lastClass = className;
+            }
+        }
+        return el;
+    }
+
+    hideSymbolInstance(pool, k) {
+        var el = pool[k];
+        if (el) {
+            pool[k] = null;
+            this.getFreePool(pool).push(el);
+        }
+    }
+
+    flushFreePools() {
+        for (const [, freePool] of this.layer_free_pools.entries()) {
+            for (var i = 0; i < freePool.length; i++) {
+                var el = freePool[i];
+                if (el._vis) {
+                    el.style.display = "none";
+                    el._vis = false;
+                }
+            }
+        }
     }
 
     buildPlayerAvatar() {
@@ -502,35 +492,10 @@ class frame_meta {
         this.player_rotator = create_svg_element("g");
         this.player_rotator.setAttribute("id", "player_rotator");
 
-        // Outer state ring / halo
-        var ring = create_svg_element("circle");
-        ring.setAttribute("class", "player_ring");
-        ring.setAttribute("cx", "0");
-        ring.setAttribute("cy", "0");
-        ring.setAttribute("r", "8.5");
-        this.player_rotator.appendChild(ring);
-
-        // Main body
-        var body = create_svg_element("circle");
-        body.setAttribute("class", "player_body");
-        body.setAttribute("cx", "0");
-        body.setAttribute("cy", "0");
-        body.setAttribute("r", "6.5");
-        this.player_rotator.appendChild(body);
-
-        // Directional pointer / visor facing East (+x, 0 deg)
-        var visor = create_svg_element("path");
-        visor.setAttribute("class", "player_visor");
-        visor.setAttribute("d", "M 1 -4.5 L 8.5 0 L 1 4.5 L 3 0 Z");
-        this.player_rotator.appendChild(visor);
-
-        // Center core
-        var core = create_svg_element("circle");
-        core.setAttribute("class", "player_core");
-        core.setAttribute("cx", "0");
-        core.setAttribute("cy", "0");
-        core.setAttribute("r", "2");
-        this.player_rotator.appendChild(core);
+        var playerUse = create_svg_element("use");
+        playerUse.setAttribute("href", "#symbol_player_body");
+        playerUse.setAttribute("xlink:href", "#symbol_player_body");
+        this.player_rotator.appendChild(playerUse);
 
         this.player_avatar.appendChild(this.player_rotator);
         this.player_layer.appendChild(this.player_avatar);
@@ -543,25 +508,15 @@ class frame_meta {
     }
 
     setViewportShift(shiftX, shiftY) {
-        const applyShift = (layer) => {
-            if (!layer) return;
-            if (shiftX === 0 && shiftY === 0) {
-                layer.removeAttribute("transform");
-            } else {
-                layer.setAttribute("transform", `translate(${shiftX.toFixed(2)}, ${shiftY.toFixed(2)})`);
-            }
-        };
-        applyShift(this.tiles_layer);
-        applyShift(this.chasm_layer);
-        applyShift(this.cliff_layer);
-        applyShift(this.water_layer);
-        applyShift(this.curves_layer);
-        applyShift(this.elev2_layer);
-        applyShift(this.elev3_layer);
-        applyShift(this.ramp_layer);
-        applyShift(this.bridges_layer);
-        applyShift(this.features_layer);
-        applyShift(this.roof_layer);
+        const tf = (shiftX === 0 && shiftY === 0)
+            ? "translate3d(0px, 0px, 0px)"
+            : `translate3d(${shiftX.toFixed(2)}px, ${shiftY.toFixed(2)}px, 0px)`;
+        if (this.world_viewport) {
+            this.world_viewport.style.transform = tf;
+        }
+        if (this.roof_layer && this.roof_layer._lastVis === "block") {
+            this.roof_layer.style.transform = tf;
+        }
     }
 
     handleCellClick(cell_element, e) {
@@ -580,43 +535,58 @@ class frame_meta {
 
         my_cache_offset = (i_agent.x * this.cell_size_y) + i_agent.y;
 
-        for (var k = 0; k < this.all_cells.length; k++) {
-            if (this.all_cells[k]) {
-                this.all_cells[k].getCellMeta().cell_element = null;
-            }
+        if (!this.changed_slots) {
+            this.changed_slots = new Int32Array(this.rect_elements.length);
         }
+        var changedCount = 0;
 
         var pad = 3;
         var frame_count = 0;
+        var mapCells = globalMapObject.map_cells;
+        for (var c = 0; c < this.all_cells.length; c++) {
+            var oldCell = this.all_cells[c];
+            if (oldCell) {
+                oldCell.cell_element = null;
+            }
+        }
         for (var i = -pad; i <= this.cell_size_x + pad; i++) {
+            var map_x = i - vector_horizontal;
+            var colCells = mapCells[map_x];
             for (var j = -pad; j <= this.cell_size_y + pad; j++) {
-                var map_x = i - vector_horizontal;
                 var map_y = j - vector_vertical;
                 var cell_object;
 
-                if (typeof globalMapObject.map_cells[map_x] !== 'undefined'
-                    && typeof globalMapObject.map_cells[map_x][map_y] !== 'undefined') {
-                    cell_object = globalMapObject.map_cells[map_x][map_y];
+                if (colCells !== undefined && colCells[map_y] !== undefined) {
+                    cell_object = colCells[map_y];
                 } else {
                     cell_object = new cell_meta(null, i, j, frame_count, CellFlags.BLOCKED);
-                }
-
-                var cell_element = this.rect_elements[frame_count];
-                cell_element.setAttribute('meta-seed-ref', frame_count + my_cache_offset);
-
-                var meta = cell_object.getCellMeta();
-                meta.cell_element = cell_element;
-                meta.my_seed_ref = frame_count + my_cache_offset;
-                meta.my_shortest_path = Number.MAX_SAFE_INTEGER;
-
-                if (typeof globalMapObject.map_cells[map_x] === 'undefined' || typeof globalMapObject.map_cells[map_x][map_y] === 'undefined') {
                     cell_object.my_seed = 100;
                 }
 
+                var cell_element = this.rect_elements[frame_count];
+                cell_object.cell_element = cell_element;
+                cell_object.my_seed_ref = frame_count + my_cache_offset;
+                cell_object.my_shortest_path = Number.MAX_SAFE_INTEGER;
+
                 this.all_cells[frame_count] = cell_object;
                 this.all_blocked_cells[frame_count] = cell_object.isBlockedType();
+
+                const flags = cell_object.flags;
+                const elev = cell_object.elevation !== undefined ? cell_object.elevation : 1;
+                const hasDynamic = (flags & (CellFlags.TERRAIN_FLORA | CellFlags.STRUCTURE_ROOF)) !== 0;
+                const stateKey = hasDynamic ? -1 : (flags | (elev << 24));
+
+                if (this.slot_state[frame_count] !== stateKey || stateKey === -1 || cell_element._lastClass === null) {
+                    this.slot_state[frame_count] = stateKey;
+                    this.changed_slots[changedCount++] = frame_count;
+                }
+
                 frame_count++;
             }
+        }
+
+        if (this.terrainPathService) {
+            this.terrainPathService.updateViewport(this, vector_horizontal, vector_vertical);
         }
 
         // Phase 4: Dynamic Interior Cutaway & Ambient Lighting
@@ -624,156 +594,91 @@ class frame_meta {
             ? StructureRegistry.getOccupiedInterior(i_agent)
             : null;
 
-        for (var k = 0; k < this.all_cells.length; k++) {
-            this.all_cells[k].decorateCell(new Array());
-
-            var cell_element = this.rect_elements[k];
-            var chasm_element = this.chasm_elements ? this.chasm_elements[k] : null;
-            var cliff_element = this.cliff_elements ? this.cliff_elements[k] : null;
-            var water_element = this.water_elements ? this.water_elements[k] : null;
-            var contour_element = this.contour_elements ? this.contour_elements[k] : null;
-            var elev2_element = this.elev2_elements ? this.elev2_elements[k] : null;
-            var elev3_element = this.elev3_elements ? this.elev3_elements[k] : null;
-            var ramp_element = this.ramp_elements ? this.ramp_elements[k] : null;
-            var bridge_element = this.bridge_elements ? this.bridge_elements[k] : null;
-            var tree_element = this.tree_elements ? this.tree_elements[k] : null;
-            var flora_element = this.flora_elements ? this.flora_elements[k] : null;
-            var roof_element = this.roof_elements[k];
+        // Pass 1: Release symbol instances only from changed slots
+        for (var c = 0; c < changedCount; c++) {
+            var k = this.changed_slots[c];
             var cell_object = this.all_cells[k];
+            const flags = cell_object.flags;
 
-            if (cell_object) {
-                const hasStrictBuilding = (cell_object.flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
-                const isWaterOrChasm = (cell_object.flags & (CellFlags.WATER | CellFlags.CHASM)) !== 0;
-                const isCliffOrRamp = (cell_object.flags & (CellFlags.TERRAIN_CLIFF | CellFlags.TERRAIN_RAMP)) !== 0;
-                const isSelectedOrPath = (cell_object.flags & (CellFlags.SELECTED | CellFlags.THINKING | CellFlags.WALKING)) !== 0;
-
-                // Canyon Chasm Contour Overlay (Deep tectonic gorge)
-                if (chasm_element) {
-                    if (cell_object.hasFlag(CellFlags.CHASM) && !hasStrictBuilding && !isSelectedOrPath) {
-                        chasm_element.style.display = "block";
-                    } else {
-                        chasm_element.style.display = "none";
-                    }
-                }
-
-                // Rocky Cliff Contour Overlay (Fractured rocky escarpment)
-                if (cliff_element) {
-                    if (cell_object.hasFlag(CellFlags.TERRAIN_CLIFF) && !cell_object.hasFlag(CellFlags.CHASM) && !hasStrictBuilding && !isSelectedOrPath) {
-                        cliff_element.style.display = "block";
-                    } else {
-                        cliff_element.style.display = "none";
-                    }
-                }
-
-                // River Water Contour Overlay (Meandering fluid stream)
-                if (water_element) {
-                    if (cell_object.hasFlag(CellFlags.WATER) && !hasStrictBuilding && !isSelectedOrPath) {
-                        if (cell_object.hasFlag(CellFlags.WATER_SHALLOW)) {
-                            water_element.setAttribute("class", "terrain_contour contour_water_shallow");
-                        } else {
-                            water_element.setAttribute("class", "terrain_contour contour_water");
-                        }
-                        water_element.style.display = "block";
-                    } else {
-                        water_element.style.display = "none";
-                    }
-                }
-
-                // Terrestrial Grass Biome (Curves Layer - Lowlands grass meadows)
-                if (contour_element) {
-                    const isGrassBiome = cell_object.hasFlag(CellFlags.GRASS) || cell_object.hasFlag(CellFlags.TREE) || cell_object.hasFlag(CellFlags.TERRAIN_FLORA);
-                    if (isGrassBiome && !hasStrictBuilding && !isWaterOrChasm && !isCliffOrRamp && !isSelectedOrPath) {
-                        contour_element.setAttribute("class", "terrain_contour contour_grass");
-                        contour_element.style.display = "block";
-                    } else {
-                        contour_element.style.display = "none";
-                    }
-                }
-
-                // Mountain Highlands (Elev2 Layer - 1st Layer Mountain Plateau)
-                if (elev2_element) {
-                    if (!hasStrictBuilding && !isWaterOrChasm && !isCliffOrRamp && !isSelectedOrPath && cell_object.elevation >= 2) {
-                        elev2_element.style.display = "block";
-                    } else {
-                        elev2_element.style.display = "none";
-                    }
-                }
-
-                // Mountain Peaks (Elev3 Layer - 2nd Layer Mountain Crags)
-                if (elev3_element) {
-                    if (!hasStrictBuilding && !isWaterOrChasm && !isCliffOrRamp && !isSelectedOrPath && cell_object.elevation >= 3) {
-                        elev3_element.style.display = "block";
-                    } else {
-                        elev3_element.style.display = "none";
-                    }
-                }
-
-                // Earthen Terrain Ramp Overlay (Natural slope waves connecting elevation tiers)
-                if (ramp_element) {
-                    if (cell_object.hasFlag(CellFlags.TERRAIN_RAMP) && !hasStrictBuilding && !isSelectedOrPath) {
-                        ramp_element.style.display = "block";
-                    } else {
-                        ramp_element.style.display = "none";
-                    }
-                }
-
-                // Engineered Structures, Paths & Bridges (Cleanly spans over organic contours)
-                if (bridge_element) {
-                    const hasStructureDeck = (cell_object.flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
-                    if (hasStructureDeck) {
-                        bridge_element.style.display = "block";
-                        bridge_element.setAttribute('class', cell_element.getAttribute('class'));
-                    } else {
-                        bridge_element.style.display = "none";
-                    }
-                }
-
-                // Circular Tree Canopies (nested within grass ground)
-                if (tree_element) {
-                    if (cell_object.hasFlag(CellFlags.TREE) && !cell_object.hasFlag(CellFlags.TERRAIN_FLORA) && !hasStrictBuilding) {
-                        tree_element.style.display = "block";
-                    } else {
-                        tree_element.style.display = "none";
-                    }
-                }
-
-                // Standalone Riparian Flora Shrub / Bush Feature
-                if (flora_element) {
-                    if (cell_object.hasFlag(CellFlags.TERRAIN_FLORA) && !hasStrictBuilding) {
-                        const map_x = cell_object.my_x !== undefined ? cell_object.my_x : 0;
-                        const map_y = cell_object.my_y !== undefined ? cell_object.my_y : 0;
-                        const jitterX = ((((Math.sin(map_x * 12.9898 + map_y * 78.233) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
-                        const jitterY = ((((Math.cos(map_x * 39.346 + map_y * 11.135) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
-                        flora_element.setAttribute("transform", `translate(${jitterX.toFixed(1)}, ${jitterY.toFixed(1)})`);
-                        flora_element.style.display = "block";
-                    } else {
-                        flora_element.style.display = "none";
-                    }
-                }
-
-                // Overhead Roof Cutaway
-                if (roof_element) {
-                    if (cell_object.hasFlag(CellFlags.STRUCTURE_ROOF)) {
-                        roof_element.style.display = "block";
-                        const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
-                        if (isCutaway) {
-                            roof_element.setAttribute('class', 'cell_roof cutaway');
-                        } else {
-                            const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
-                            roof_element.setAttribute('class', isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded');
-                        }
-                    } else {
-                        roof_element.style.display = "none";
-                    }
-                }
+            const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+            if (!hasStructureDeck) {
+                this.hideSymbolInstance(this.bridge_elements, k);
+            }
+            if (!((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding)) {
+                this.hideSymbolInstance(this.tree_elements, k);
+            }
+            if (!((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding)) {
+                this.hideSymbolInstance(this.flora_elements, k);
+            }
+            if ((flags & CellFlags.STRUCTURE_ROOF) === 0) {
+                this.hideSymbolInstance(this.roof_elements, k);
             }
         }
 
+        // Pass 2: Acquire recycled or new symbol instances only for changed slots
+        for (var c = 0; c < changedCount; c++) {
+            var k = this.changed_slots[c];
+            var cell_object = this.all_cells[k];
+            const flags = cell_object.flags;
+
+            cell_object.decorateCell();
+            var cell_element = this.rect_elements[k];
+
+            const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+
+            if (hasStructureDeck) {
+                this.ensureSymbolInstance(this.bridge_elements, this.bridges_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+            }
+            if ((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding) {
+                this.ensureSymbolInstance(this.tree_elements, this.features_layer, "#symbol_tree", k, "cell_tree_feature");
+            }
+            if ((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding) {
+                var floraEl = this.ensureSymbolInstance(this.flora_elements, this.features_layer, "#symbol_flora", k, "cell_flora_feature");
+                const map_x = cell_object.my_x !== undefined ? cell_object.my_x : 0;
+                const map_y = cell_object.my_y !== undefined ? cell_object.my_y : 0;
+                const jitterX = ((((Math.sin(map_x * 12.9898 + map_y * 78.233) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                const jitterY = ((((Math.cos(map_x * 39.346 + map_y * 11.135) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                const tf = `translate(${jitterX.toFixed(1)}, ${jitterY.toFixed(1)})`;
+                if (floraEl._lastTf !== tf) {
+                    floraEl.setAttribute("transform", tf);
+                    floraEl._lastTf = tf;
+                }
+            }
+            if ((flags & CellFlags.STRUCTURE_ROOF) !== 0) {
+                const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
+                var roofCls;
+                if (isCutaway) {
+                    roofCls = 'cell_roof cutaway';
+                } else {
+                    const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
+                    roofCls = isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded';
+                }
+                this.ensureSymbolInstance(this.roof_elements, this.roof_layer, "#symbol_tile", k, roofCls);
+            }
+        }
+
+        this.flushFreePools();
+
+        // Empty-layer culling
+        const toggleLayerVis = (layer, pool) => {
+            if (!layer) return;
+            const activeCount = layer.childElementCount - this.getFreePool(pool).length;
+            const vis = activeCount > 0 ? "block" : "none";
+            if (layer._lastVis !== vis) {
+                layer.style.display = vis;
+                layer._lastVis = vis;
+            }
+        };
+        toggleLayerVis(this.bridges_layer, this.bridge_elements);
+        toggleLayerVis(this.roof_layer, this.roof_elements);
+
         if (this.ambient_layer) {
-            if (occupiedStructure) {
-                this.ambient_layer.setAttribute("class", "ambient_interior active");
-            } else {
-                this.ambient_layer.setAttribute("class", "ambient_interior inactive");
+            const ambCls = occupiedStructure ? "ambient_interior active" : "ambient_interior inactive";
+            if (this.ambient_layer._lastCls !== ambCls) {
+                this.ambient_layer.setAttribute("class", ambCls);
+                this.ambient_layer._lastCls = ambCls;
             }
         }
 
@@ -788,11 +693,18 @@ class frame_meta {
             if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
                 avatarClass += " thinking";
             }
-            this.player_avatar.setAttribute("class", avatarClass);
+            if (this.player_avatar._lastCls !== avatarClass) {
+                this.player_avatar.setAttribute("class", avatarClass);
+                this.player_avatar._lastCls = avatarClass;
+            }
 
             var centerX = (this.grid_mid_x + 0.5) * this.cell_size;
             var centerY = (this.grid_mid_y + 0.5) * this.cell_size;
-            this.player_avatar.setAttribute("transform", `translate(${centerX}, ${centerY})`);
+            var avatarTf = `translate(${centerX}, ${centerY})`;
+            if (this.player_avatar._lastTf !== avatarTf) {
+                this.player_avatar.setAttribute("transform", avatarTf);
+                this.player_avatar._lastTf = avatarTf;
+            }
         }
 
         if (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells && globalMapObject.map_cells[i_agent.x] && globalMapObject.map_cells[i_agent.x][i_agent.y]) {

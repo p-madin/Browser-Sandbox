@@ -80,11 +80,20 @@ function highlightPath(path) {
         if (typeof (path[i].stepOptionToCell) !== 'undefined') {
             var toElem = path[i].stepOptionToCell.getCellMeta().cell_element;
             var fromElem = path[i].stepOptionFromCell.getCellMeta().cell_element;
-            if (toElem) toElem.classList.add("path_step");
-            if (fromElem) fromElem.classList.add("path_step");
+            if (toElem) {
+                toElem.classList.add("path_step");
+                toElem._lastClass = null;
+            }
+            if (fromElem) {
+                fromElem.classList.add("path_step");
+                fromElem._lastClass = null;
+            }
         } else {
             var elem = path[i].getCellMeta().cell_element;
-            if (elem) elem.classList.add("path_step");
+            if (elem) {
+                elem.classList.add("path_step");
+                elem._lastClass = null;
+            }
         }
     }
 }
@@ -98,8 +107,9 @@ function highlightPathInteger(e) {
 function clearGridPaths() {
     for (var i = 0; i < globalGridObject.all_cells.length; i++) {
         var elem = globalGridObject.all_cells[i].getCellMeta().cell_element;
-        if (elem) {
+        if (elem && elem.classList.contains("path_step")) {
             elem.classList.remove("path_step");
+            elem._lastClass = null;
         }
     }
 }

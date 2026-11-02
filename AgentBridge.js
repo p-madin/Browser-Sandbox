@@ -217,6 +217,15 @@ class AgentBridge {
                 if (walkBtn) walkBtn.click();
             }, 400);
         }
+
+        // 6. Run stationary benchmark automatically: ?run_stationary_benchmark=true
+        if (params.get("run_stationary_benchmark") === "true") {
+            setTimeout(() => {
+                if (typeof window.runStationaryBenchmark === 'function') {
+                    window.runStationaryBenchmark(120);
+                }
+            }, 400);
+        }
     }
 
     /**
@@ -225,6 +234,16 @@ class AgentBridge {
     static async runWalkBenchmark(steps = 10) {
         if (typeof window !== 'undefined' && typeof window.runWalkBenchmark === 'function') {
             return await window.runWalkBenchmark(steps);
+        }
+        return null;
+    }
+
+    /**
+     * Programmatically executes the 120-frame stationary idle performance benchmark.
+     */
+    static async runStationaryBenchmark(frameCount = 120) {
+        if (typeof window !== 'undefined' && typeof window.runStationaryBenchmark === 'function') {
+            return await window.runStationaryBenchmark(frameCount);
         }
         return null;
     }

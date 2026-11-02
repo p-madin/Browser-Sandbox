@@ -283,8 +283,16 @@ class cell_meta {
     }
 
     // --- Rendering / Styling ---
-    decorateCell(input = []) {
+    decorateCell(input) {
         if (!this.cell_element) return;
+        const activeTileMask = CellFlags.BLOCKED | CellFlags.ENEMY | CellFlags.AGENT | CellFlags.SELECTED | CellFlags.SPECIAL | CellFlags.THINKING | CellFlags.WALKING | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_FIXTURE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_BRIDGE;
+        if ((this.flags & activeTileMask) === 0 && (!input || input.length === 0)) {
+            if (this.cell_element._lastClass !== "cell") {
+                this.cell_element.setAttribute("class", "cell");
+                this.cell_element._lastClass = "cell";
+            }
+            return;
+        }
         var classes = ["cell"];
         if (this.flags & CellFlags.GRASS) classes.push("grass");
         if (this.flags & CellFlags.TREE) classes.push("tree");
@@ -334,7 +342,11 @@ class cell_meta {
                 }
             }
         }
-        this.cell_element.setAttribute("class", classes.join(" "));
+        var classStr = classes.join(" ");
+        if (this.cell_element._lastClass !== classStr) {
+            this.cell_element.setAttribute("class", classStr);
+            this.cell_element._lastClass = classStr;
+        }
     }
 
     // --- Spatial & Distance ---
@@ -511,6 +523,9 @@ class cell_meta {
             for (var i = 0; i < map_cell.my_neighbours.length; i++) {
                 map_cell.my_neighbours[i].determineNeighboursPassable(globalMapObject);
             }
+            if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+                globalGridObject.updateGrid(agent, true);
+            }
         } else {
             // Distant tree: Find closest walkable neighbor and navigate there
             var candidateOptions = (this.my_step_option && this.my_step_option.length > 0)
@@ -542,6 +557,9 @@ class cell_meta {
             map_cell.determineNeighboursPassable(globalMapObject);
             for (var i = 0; i < map_cell.my_neighbours.length; i++) {
                 map_cell.my_neighbours[i].determineNeighboursPassable(globalMapObject);
+            }
+            if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof agent !== 'undefined' && agent) {
+                globalGridObject.updateGrid(agent, true);
             }
         } else {
             // Distant enemy: Find closest walkable neighbor and navigate there

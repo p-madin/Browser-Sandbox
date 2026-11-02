@@ -587,7 +587,7 @@ class BenchmarkUIController {
             </tr>
             <tr>
                 <td colspan="2"><strong>Total SVG DOM Elements in #frame</strong></td>
-                <td colspan="5"><span class="mono font-bold">${telemetry.totalSvgElements.toLocaleString()} nodes</span></td>
+                <td colspan="5"><span class="mono font-bold">${telemetry.totalSvgElements.toLocaleString()} nodes</span> (&lt;use&gt; instances: ${(telemetry.useElementsCount || 0).toLocaleString()}, &lt;defs&gt; symbols: ${telemetry.defsSymbolsCount || 0})</td>
             </tr>
         `;
 
@@ -602,7 +602,7 @@ class BenchmarkUIController {
 | **Jank Frames (>20ms)** | **${telemetry.jankFramesCount} (${telemetry.jankFrameRatePct}%)** | Lower is smoother (0% ideal) |
 | **Heavy Jank (>33ms)** | **${telemetry.heavyJankCount}** | Target: 0 dropped frames |
 | **updateGrid Latency** | **${telemetry.avgUpdateGridMs} ms** (Max: ${telemetry.maxUpdateGridMs} ms) | DOM mutation cost per step |
-| **Total SVG DOM Nodes** | **${telemetry.totalSvgElements.toLocaleString()} elements** | Total active nodes in #frame |
+| **Total SVG DOM Nodes** | **${telemetry.totalSvgElements.toLocaleString()} elements** | Active &lt;use&gt; instances: ${(telemetry.useElementsCount || 0).toLocaleString()} |
 `;
         window.__lastWalkBenchmarkReport = md;
     }
@@ -714,12 +714,16 @@ class WalkAnimationBenchmark {
         return path;
     }
 
-    async runWalkBenchmark(stepCount = 10) {
+    async runWalkBenchmark(stepCount = 10, biome = "spawn") {
         if (this.isRunning) return null;
         this.isRunning = true;
 
         if (typeof AgentBridge !== 'undefined') {
-            AgentBridge.teleport(0, 0);
+            if (biome && biome !== "spawn" && typeof AgentBridge.teleportToBiome === 'function') {
+                AgentBridge.teleportToBiome(biome);
+            } else {
+                AgentBridge.teleport(0, 0);
+            }
         }
 
         await new Promise(r => setTimeout(r, 150));
@@ -731,9 +735,16 @@ class WalkAnimationBenchmark {
         }
 
         var totalSvgElements = 0;
+        var useElementsCount = 0;
+        var defsSymbolsCount = 0;
         var frameEl = document.getElementById("frame");
         if (frameEl) {
             totalSvgElements = frameEl.getElementsByTagName("*").length;
+            useElementsCount = frameEl.getElementsByTagName("use").length;
+            var defsEl = frameEl.querySelector("defs");
+            if (defsEl) {
+                defsSymbolsCount = defsEl.children.length;
+            }
         }
 
         var frameTimestamps = [];
@@ -780,6 +791,11 @@ class WalkAnimationBenchmark {
         globalGridObject.updateGrid = originalUpdateGrid;
         this.isRunning = false;
 
+        if (frameEl) {
+            totalSvgElements = frameEl.getElementsByTagName("*").length;
+            useElementsCount = frameEl.getElementsByTagName("use").length;
+        }
+
         var totalWalkTime = walkEnd - walkStart;
         var validDeltas = frameDeltas.slice(1);
         var totalFrames = validDeltas.length;
@@ -801,9 +817,12 @@ class WalkAnimationBenchmark {
         var maxUpdateGridTime = updateGridTimes.length > 0 ? Math.max(...updateGridTimes) : 0;
 
         var telemetry = {
+            biome: biome,
             stepCount: path.length,
             totalDurationMs: Number(totalWalkTime.toFixed(1)),
             totalSvgElements: totalSvgElements,
+            useElementsCount: useElementsCount,
+            defsSymbolsCount: defsSymbolsCount,
             totalFrames: totalFrames,
             avgFps: Number(avgFps.toFixed(1)),
             minFps: Number(minFps.toFixed(1)),
@@ -825,6 +844,93 @@ class WalkAnimationBenchmark {
         console.log("[WalkAnimationBenchmark] Telemetry:", telemetry);
         return telemetry;
     }
+
+    async runMultiBiomeWalkBenchmark(stepCount = 10) {
+        var biomes = ["spawn", "mountains", "river"];
+        var report = {};
+        for (var b of biomes) {
+            report[b] = await this.runWalkBenchmark(stepCount, b);
+            await new Promise(r => setTimeout(r, 100));
+        }
+        window.__lastMultiBiomeBenchmark = report;
+        console.log("[MultiBiomeWalkBenchmark] Report:", report);
+        return report;
+    }
+
+    async runStationaryBenchmark(frameCount = 120) {
+        if (this.isRunning) return null;
+        this.isRunning = true;
+
+        var totalSvgElements = 0;
+        var useElementsCount = 0;
+        var defsSymbolsCount = 0;
+        var frameEl = document.getElementById("frame");
+        if (frameEl) {
+            totalSvgElements = frameEl.getElementsByTagName("*").length;
+            useElementsCount = frameEl.getElementsByTagName("use").length;
+            var defsEl = frameEl.querySelector("defs");
+            if (defsEl) {
+                defsSymbolsCount = defsEl.children.length;
+            }
+        }
+
+        var frameDeltas = [];
+        var lastTime = performance.now();
+        var startTime = lastTime;
+
+        await new Promise((resolve) => {
+            var counted = 0;
+            function sample(now) {
+                var delta = now - lastTime;
+                lastTime = now;
+                if (counted > 0 && delta > 0 && delta < 1000) {
+                    frameDeltas.push(delta);
+                }
+                counted++;
+                if (counted < frameCount) {
+                    requestAnimationFrame(sample);
+                } else {
+                    resolve();
+                }
+            }
+            requestAnimationFrame(sample);
+        });
+
+        this.isRunning = false;
+        var totalDuration = performance.now() - startTime;
+        var avgFrameTime = frameDeltas.length > 0 ? (frameDeltas.reduce((a, b) => a + b, 0) / frameDeltas.length) : 16.6;
+        var maxFrameTime = frameDeltas.length > 0 ? Math.max(...frameDeltas) : 16.6;
+        var minFrameTime = frameDeltas.length > 0 ? Math.min(...frameDeltas) : 16.6;
+        var sorted = [...frameDeltas].sort((a, b) => a - b);
+        var p95 = sorted[Math.floor(sorted.length * 0.95)] || maxFrameTime;
+        var p99 = sorted[Math.floor(sorted.length * 0.99)] || maxFrameTime;
+        var jankFrames = frameDeltas.filter(d => d > 20.0).length;
+        var avgFps = frameDeltas.length / (totalDuration / 1000);
+        var minFps = maxFrameTime > 0 ? (1000 / maxFrameTime) : avgFps;
+
+        var telemetry = {
+            mode: "stationary",
+            frameCount: frameDeltas.length,
+            totalDurationMs: Number(totalDuration.toFixed(1)),
+            totalSvgElements: totalSvgElements,
+            useElementsCount: useElementsCount,
+            defsSymbolsCount: defsSymbolsCount,
+            avgFps: Number(avgFps.toFixed(1)),
+            minFps: Number(minFps.toFixed(1)),
+            avgFrameTimeMs: Number(avgFrameTime.toFixed(2)),
+            p95FrameTimeMs: Number(p95.toFixed(2)),
+            p99FrameTimeMs: Number(p99.toFixed(2)),
+            maxFrameTimeMs: Number(maxFrameTime.toFixed(2)),
+            jankFramesCount: jankFrames,
+            jankFrameRatePct: Number(((jankFrames / (frameDeltas.length || 1)) * 100).toFixed(1)),
+            timestamp: new Date().toISOString()
+        };
+
+        this.stationaryResults = telemetry;
+        window.__lastStationaryBenchmark = telemetry;
+        console.log("[StationaryBenchmark] Telemetry:", telemetry);
+        return telemetry;
+    }
 }
 
 // Global initialization on window load
@@ -834,7 +940,9 @@ var globalWalkBenchmark = new WalkAnimationBenchmark();
 
 if (typeof window !== 'undefined') {
     window.globalWalkBenchmark = globalWalkBenchmark;
-    window.runWalkBenchmark = (steps = 10) => globalWalkBenchmark.runWalkBenchmark(steps);
+    window.runWalkBenchmark = (steps = 10, biome = "spawn") => globalWalkBenchmark.runWalkBenchmark(steps, biome);
+    window.runMultiBiomeWalkBenchmark = (steps = 10) => globalWalkBenchmark.runMultiBiomeWalkBenchmark(steps);
+    window.runStationaryBenchmark = (n = 120) => globalWalkBenchmark.runStationaryBenchmark(n);
 }
 
 if (typeof EventTrait !== 'undefined') {
