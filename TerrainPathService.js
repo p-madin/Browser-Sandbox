@@ -20,6 +20,11 @@ class TerrainPathService {
         this.pathElements = {};
         this.container = null;
         this.lastTf = null;
+        this.sunAzimuth = 315;
+        this.lastReliefLoops = null;
+        this.shadowContainer = null;
+        this.cachedStructureCells = null;
+        this.cachedTreeCells = null;
     }
 
     createScalarField(predicate) {
@@ -464,6 +469,153 @@ class TerrainPathService {
         };
     }
 
+    /**
+     * Phase 3: Directional Topographic Shaded Relief (Sunlit Ridges & Cast Shadows)
+     * Compares loop segment normal vectors to sun azimuth angle to generate 2.5D relief strokes.
+     * @param {number} sunAngleDeg 
+     * @param {Object} loopsObj 
+     * @returns {{relief_sunlit: string, relief_shadow: string}}
+     */
+    generateReliefPaths(sunAngleDeg = this.sunAzimuth, loopsObj = this.lastReliefLoops) {
+        if (!loopsObj) return { relief_sunlit: "", relief_shadow: "" };
+
+        const rad = sunAngleDeg * Math.PI / 180;
+        const sunX = -Math.cos(rad);
+        const sunY = -Math.sin(rad);
+
+        let dSunlit = "";
+        let dShadow = "";
+
+        const traceNormalEdges = (loops, isChasm = false) => {
+            if (!loops) return;
+            for (const loop of loops) {
+                if (loop.length < 3) continue;
+                for (let i = 0; i < loop.length; i++) {
+                    const p1 = loop[i];
+                    const p2 = loop[(i + 1) % loop.length];
+                    const dx = p2[0] - p1[0];
+                    const dy = p2[1] - p1[1];
+                    const len = Math.hypot(dx, dy);
+                    if (len < 0.5) continue;
+
+                    let nx = -dy / len;
+                    let ny = dx / len;
+                    if (isChasm) {
+                        nx = -nx;
+                        ny = -ny;
+                    }
+
+                    const dot = nx * sunX + ny * sunY;
+
+                    if (dot > 0.22) {
+                        dSunlit += `M ${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+                    } else if (dot < -0.22) {
+                        const ox = nx * 1.5;
+                        const oy = ny * 1.5;
+                        dShadow += `M ${(p1[0] + ox).toFixed(1)} ${(p1[1] + oy).toFixed(1)} L ${(p2[0] + ox).toFixed(1)} ${(p2[1] + oy).toFixed(1)} `;
+                    }
+                }
+            }
+        };
+
+        traceNormalEdges(loopsObj.elev2);
+        traceNormalEdges(loopsObj.elev3);
+        traceNormalEdges(loopsObj.cliff);
+        traceNormalEdges(loopsObj.chasm, true);
+
+        return { relief_sunlit: dSunlit, relief_shadow: dShadow };
+    }
+
+    /**
+     * Phase 3 Iteration: Directional Structure Shadows (Houses, Walls, Watermills, Piers)
+     * Projects extruded shadow polygons down-sun onto surrounding terrain and cobblestone paths.
+     * @param {number} sunAngleDeg 
+     * @param {Array<Object>} cells 
+     * @returns {string} SVG path 'd' string
+     */
+    generateStructureShadows(sunAngleDeg = this.sunAzimuth, cells = this.cachedStructureCells) {
+        if (!cells || cells.length === 0) return "";
+
+        const rad = sunAngleDeg * Math.PI / 180;
+        const sx = -Math.sin(rad);
+        const sy = Math.cos(rad);
+        const cellSize = this.cellSize;
+        const baseH = 12;
+        const towerH = 22;
+        const fixtureH = 7;
+
+        let d = "";
+        for (let i = 0; i < cells.length; i++) {
+            const c = cells[i];
+            const H = c.isTower ? towerH : (c.isFixture ? fixtureH : baseH);
+            const dx = sx * H;
+            const dy = sy * H;
+
+            const x0 = c.x * cellSize;
+            const y0 = c.y * cellSize;
+            const x1 = x0 + cellSize;
+            const y1 = y0 + cellSize;
+
+            const px0 = x0 + dx, py0 = y0 + dy;
+            const px1 = x1 + dx, py1 = y0 + dy;
+            const px2 = x1 + dx, py2 = y1 + dy;
+            const px3 = x0 + dx, py3 = y1 + dy;
+
+            if (dx >= 0 && dy >= 0) {
+                d += `M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y0.toFixed(1)} L ${px1.toFixed(1)} ${py1.toFixed(1)} L ${px2.toFixed(1)} ${py2.toFixed(1)} L ${px3.toFixed(1)} ${py3.toFixed(1)} L ${x0.toFixed(1)} ${y1.toFixed(1)} Z `;
+            } else if (dx <= 0 && dy >= 0) {
+                d += `M ${x1.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} L ${px2.toFixed(1)} ${py2.toFixed(1)} L ${px3.toFixed(1)} ${py3.toFixed(1)} L ${px0.toFixed(1)} ${py0.toFixed(1)} L ${x0.toFixed(1)} ${y0.toFixed(1)} Z `;
+            } else if (dx <= 0 && dy <= 0) {
+                d += `M ${x1.toFixed(1)} ${y1.toFixed(1)} L ${x0.toFixed(1)} ${y1.toFixed(1)} L ${px3.toFixed(1)} ${py3.toFixed(1)} L ${px0.toFixed(1)} ${py0.toFixed(1)} L ${px1.toFixed(1)} ${py1.toFixed(1)} L ${x1.toFixed(1)} ${y0.toFixed(1)} Z `;
+            } else {
+                d += `M ${x0.toFixed(1)} ${y1.toFixed(1)} L ${x0.toFixed(1)} ${y0.toFixed(1)} L ${px0.toFixed(1)} ${py0.toFixed(1)} L ${px1.toFixed(1)} ${py1.toFixed(1)} L ${px2.toFixed(1)} ${py2.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)} Z `;
+            }
+        }
+        return d;
+    }
+
+    /**
+     * Phase 3 Iteration: Sharp Directional Tree & Flora Shadows
+     * Projects crisp tangent capsule shadows down-sun onto surrounding terrain and cobblestone paths.
+     * @param {number} sunAngleDeg 
+     * @param {Array<Object>} trees 
+     * @returns {string} SVG path 'd' string
+     */
+    generateTreeShadows(sunAngleDeg = this.sunAzimuth, trees = this.cachedTreeCells) {
+        if (!trees || trees.length === 0) return "";
+
+        const rad = sunAngleDeg * Math.PI / 180;
+        const sx = -Math.sin(rad);
+        const sy = Math.cos(rad);
+        const cellSize = this.cellSize;
+        const L = 12; // projection length
+        const R = 7.5; // canopy radius
+        const rTrunk = 2.0;
+
+        // Tangent perpendicular vector
+        const vx = -sy;
+        const vy = sx;
+
+        let d = "";
+        for (let i = 0; i < trees.length; i++) {
+            const t = trees[i];
+            const cx = t.x * cellSize + cellSize * 0.5;
+            const cy = t.y * cellSize + cellSize * 0.5;
+
+            const hx = cx + sx * L;
+            const hy = cy + sy * L;
+
+            const b1x = cx - vx * rTrunk, b1y = cy - vy * rTrunk;
+            const b2x = cx + vx * rTrunk, b2y = cy + vy * rTrunk;
+
+            const t1x = hx - vx * R, t1y = hy - vy * R;
+            const t2x = hx + vx * R, t2y = hy + vy * R;
+
+            d += `M ${b1x.toFixed(1)} ${b1y.toFixed(1)} L ${t1x.toFixed(1)} ${t1y.toFixed(1)} A ${R} ${R} 0 0 1 ${t2x.toFixed(1)} ${t2y.toFixed(1)} L ${b2x.toFixed(1)} ${b2y.toFixed(1)} Z `;
+        }
+        return d;
+    }
+
     generateAllPathData() {
         const CellFlagsRef = (typeof CellFlags !== 'undefined') ? CellFlags : (typeof require !== 'undefined' ? require('./cell.js').CellFlags : {});
         const hasStrictBuilding = (c) => (c.flags & (CellFlagsRef.STRUCTURE_FLOOR | CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED | CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE | CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH)) !== 0;
@@ -482,15 +634,15 @@ class TerrainPathService {
 
         // 2. Elev2 (Plateaus)
         const fElev2 = this.createScalarField(c => c.elevation >= 2 && !hasStrictBuilding(c) && (c.flags & (CellFlagsRef.WATER | CellFlagsRef.CHASM | CellFlagsRef.TERRAIN_CLIFF | CellFlagsRef.TERRAIN_RAMP)) === 0);
-        const dElev2 = this.extractPath(this.gaussianBlur(fElev2), 0.35);
+        const resElev2 = this.extractPath(this.gaussianBlur(fElev2), 0.35, 0, true);
 
         // 3. Elev3 (Peaks)
         const fElev3 = this.createScalarField(c => c.elevation >= 3 && !hasStrictBuilding(c) && (c.flags & (CellFlagsRef.WATER | CellFlagsRef.CHASM | CellFlagsRef.TERRAIN_CLIFF | CellFlagsRef.TERRAIN_RAMP)) === 0);
-        const dElev3 = this.extractPath(this.gaussianBlur(fElev3), 0.35);
+        const resElev3 = this.extractPath(this.gaussianBlur(fElev3), 0.35, 0, true);
 
         // 4. Chasm (Tectonic fracture jitter)
         const fChasm = this.createScalarField(c => (c.flags & CellFlagsRef.CHASM) !== 0 && !hasStrictBuilding(c));
-        const dChasm = this.extractPath(this.gaussianBlur(fChasm), 0.35, 1.2);
+        const resChasm = this.extractPath(this.gaussianBlur(fChasm), 0.35, 1.2, true);
 
         // 5. Cliff (Dual-Threshold: Core tau=0.50, Fringe tau=0.25)
         const fCliff = this.createScalarField(c => (c.flags & CellFlagsRef.TERRAIN_CLIFF) !== 0 && (c.flags & CellFlagsRef.CHASM) === 0 && !hasStrictBuilding(c));
@@ -520,16 +672,53 @@ class TerrainPathService {
             resCliffFringe.loops
         );
 
+        // 9. Directional Shaded Relief (Sunlit Ridges & Cast Shadows)
+        this.lastReliefLoops = {
+            elev2: resElev2.loops,
+            elev3: resElev3.loops,
+            cliff: resCliffCore.loops,
+            chasm: resChasm.loops
+        };
+        const relief = this.generateReliefPaths(this.sunAzimuth, this.lastReliefLoops);
+
+        // 10. Directional Object Shadows (Structures & Trees)
+        const structureCells = [];
+        const treeCells = [];
+        if (this.map && this.map.map_cells) {
+            for (let x = this.minX; x < this.map.max_width; x++) {
+                const col = this.map.map_cells[x];
+                if (!col) continue;
+                for (let y = this.minY; y < this.map.max_height; y++) {
+                    const c = col[y];
+                    if (!c) continue;
+                    const flags = c.flags;
+                    if ((flags & (CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_ROOF | CellFlagsRef.STRUCTURE_FIXTURE | CellFlagsRef.STRUCTURE_BARRICADE)) !== 0) {
+                        const isTower = (c.elevation >= 2) || (c.structureId && c.structureId.includes("watchtower"));
+                        const isFixture = (flags & (CellFlagsRef.STRUCTURE_FIXTURE | CellFlagsRef.STRUCTURE_BARRICADE)) !== 0 && (flags & (CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_ROOF)) === 0;
+                        structureCells.push({ x, y, isTower, isFixture });
+                    }
+                    if ((flags & CellFlagsRef.TREE) !== 0 && (flags & CellFlagsRef.TERRAIN_FLORA) === 0 && !hasStrictBuilding(c)) {
+                        treeCells.push({ x, y });
+                    }
+                }
+            }
+        }
+        this.cachedStructureCells = structureCells;
+        this.cachedTreeCells = treeCells;
+
+        const dStructShadows = this.generateStructureShadows(this.sunAzimuth, structureCells);
+        const dTreeShadows = this.generateTreeShadows(this.sunAzimuth, treeCells);
+
         return {
             grass_fringe: resGrassFringe.pathD,
             grass: resGrassCore.pathD,
             sand_fringe: resSandFringe.pathD,
             sand: resSandCore.pathD,
-            elev2: dElev2,
-            elev3: dElev3,
+            elev2: resElev2.pathD,
+            elev3: resElev3.pathD,
             cliff_fringe: resCliffFringe.pathD,
             cliff: resCliffCore.pathD,
-            chasm: dChasm,
+            chasm: resChasm.pathD,
             water_fringe: resWaterFringe.pathD,
             water: resWaterCore.pathD,
             water_shallow: dShallow,
@@ -541,7 +730,11 @@ class TerrainPathService {
             scatter_scree: detritus.scatter_scree,
             scatter_water: detritus.scatter_pebbles,
             scatter_grass: detritus.scatter_clovers,
-            scatter_cliff: detritus.scatter_scree
+            scatter_cliff: detritus.scatter_scree,
+            relief_shadow: relief.relief_shadow,
+            relief_sunlit: relief.relief_sunlit,
+            structure_shadows: dStructShadows,
+            tree_shadows: dTreeShadows
         };
     }
 
@@ -581,7 +774,9 @@ class TerrainPathService {
             { id: "path_chasm", cls: "terrain_contour contour_chasm", key: "chasm" },
             { id: "path_water_fringe", cls: "terrain_contour contour_fringe contour_water_fringe", key: "water_fringe" },
             { id: "path_water", cls: "terrain_contour contour_water", key: "water" },
-            { id: "path_water_shallow", cls: "terrain_contour contour_water_shallow", key: "water_shallow" }
+            { id: "path_water_shallow", cls: "terrain_contour contour_water_shallow", key: "water_shallow" },
+            { id: "path_relief_shadow", cls: "terrain_relief relief_shadow", key: "relief_shadow" },
+            { id: "path_relief_sunlit", cls: "terrain_relief relief_sunlit", key: "relief_sunlit" }
         ];
 
         const scatterDefs = [
@@ -654,7 +849,43 @@ class TerrainPathService {
             }
         }
 
-        console.log("[TerrainPathService] Mounted 12 terrain paths, 1 ramp, and 5 boundary micro-scatter paths.");
+        // Mount directional object shadow container (Layer 2e, between bridges_layer and structures_layer)
+        this.shadowContainer = gridObject.shadow_layer || createSvg("g");
+        if (!gridObject.shadow_layer) {
+            this.shadowContainer.setAttribute("id", "world_shadow_paths");
+            this.shadowContainer.style.pointerEvents = "none";
+        }
+
+        const pStructureShadow = createSvg("path");
+        pStructureShadow.setAttribute("id", "path_structure_shadows");
+        pStructureShadow.setAttribute("class", "terrain_shadow structure_shadow");
+        const dStruct = pathData.structure_shadows || "";
+        pStructureShadow.setAttribute("d", dStruct);
+        pStructureShadow.style.display = dStruct.length > 0 ? "block" : "none";
+        this.shadowContainer.appendChild(pStructureShadow);
+        this.pathElements["structure_shadows"] = pStructureShadow;
+
+        const pTreeShadow = createSvg("path");
+        pTreeShadow.setAttribute("id", "path_tree_shadows");
+        pTreeShadow.setAttribute("class", "terrain_shadow tree_shadow");
+        const dTree = pathData.tree_shadows || "";
+        pTreeShadow.setAttribute("d", dTree);
+        pTreeShadow.style.display = dTree.length > 0 ? "block" : "none";
+        this.shadowContainer.appendChild(pTreeShadow);
+        this.pathElements["tree_shadows"] = pTreeShadow;
+
+        // Insert shadowContainer right after bridges_layer (before structures_layer or features_layer)
+        if (this.shadowContainer.parentNode !== gridObject.world_viewport) {
+            if (gridObject.structures_layer && gridObject.structures_layer.parentNode === gridObject.world_viewport) {
+                gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.structures_layer);
+            } else if (gridObject.features_layer && gridObject.features_layer.parentNode === gridObject.world_viewport) {
+                gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.features_layer);
+            } else {
+                gridObject.world_viewport.appendChild(this.shadowContainer);
+            }
+        }
+
+        console.log("[TerrainPathService] Mounted 14 terrain paths, 1 ramp, 5 scatter paths, and 2 directional object shadow paths.");
     }
 
     updateViewport(gridObject, vector_horizontal, vector_vertical) {
@@ -670,7 +901,65 @@ class TerrainPathService {
             if (this.scatterContainer) {
                 this.scatterContainer.setAttribute("transform", tf);
             }
+            if (this.shadowContainer) {
+                this.shadowContainer.setAttribute("transform", tf);
+            }
             this.lastTf = tf;
+        }
+    }
+
+    setSunAzimuth(deg) {
+        this.sunAzimuth = deg;
+        const rad = deg * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+
+        // Gradient start (x1, y1) faces light (sunward), end (x2, y2) points down-sun into shadow
+        const x1 = (50 - 50 * cos).toFixed(1) + "%";
+        const y1 = (50 - 50 * sin).toFixed(1) + "%";
+        const x2 = (50 + 50 * cos).toFixed(1) + "%";
+        const y2 = (50 + 50 * sin).toFixed(1) + "%";
+
+        const gradIds = ["grad_elev2_relief", "grad_elev3_relief", "grad_cliff_relief", "grad_chasm_depth"];
+        if (typeof document !== 'undefined') {
+            for (const gid of gradIds) {
+                const el = document.getElementById(gid);
+                if (el) {
+                    el.setAttribute("x1", x1);
+                    el.setAttribute("y1", y1);
+                    el.setAttribute("x2", x2);
+                    el.setAttribute("y2", y2);
+                }
+            }
+        }
+
+        // Recompute relief paths from cached boundary loops (no scalar re-extraction)
+        if (this.lastReliefLoops) {
+            const relief = this.generateReliefPaths(deg, this.lastReliefLoops);
+            if (this.pathElements["relief_sunlit"]) {
+                this.pathElements["relief_sunlit"].setAttribute("d", relief.relief_sunlit);
+                this.pathElements["relief_sunlit"].style.display = relief.relief_sunlit.length > 0 ? "block" : "none";
+            }
+            if (this.pathElements["relief_shadow"]) {
+                this.pathElements["relief_shadow"].setAttribute("d", relief.relief_shadow);
+                this.pathElements["relief_shadow"].style.display = relief.relief_shadow.length > 0 ? "block" : "none";
+            }
+        }
+
+        // Recompute directional structure & tree shadows
+        if (this.cachedStructureCells) {
+            const dStruct = this.generateStructureShadows(deg, this.cachedStructureCells);
+            if (this.pathElements["structure_shadows"]) {
+                this.pathElements["structure_shadows"].setAttribute("d", dStruct);
+                this.pathElements["structure_shadows"].style.display = dStruct.length > 0 ? "block" : "none";
+            }
+        }
+        if (this.cachedTreeCells) {
+            const dTree = this.generateTreeShadows(deg, this.cachedTreeCells);
+            if (this.pathElements["tree_shadows"]) {
+                this.pathElements["tree_shadows"].setAttribute("d", dTree);
+                this.pathElements["tree_shadows"].style.display = dTree.length > 0 ? "block" : "none";
+            }
         }
     }
 
@@ -682,7 +971,7 @@ class TerrainPathService {
             p.setAttribute("d", d);
             p.style.display = d.length > 0 ? "block" : "none";
         }
-        console.log("[TerrainPathService] Rebuilt all 16 vector landmark and ecotone paths.");
+        console.log("[TerrainPathService] Rebuilt all 22 vector landmark, relief, ecotone, and shadow paths.");
     }
 }
 

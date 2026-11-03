@@ -82,6 +82,7 @@ class pathfinder {
         return {
             success: result.success,
             pathLength: result.pathLength,
+            pathCost: result.pathCost || result.pathLength,
             bestPath: result.bestPath,
             uniqueCount: result.uniqueOptions.length,
             bestCount: result.bestOptions.length,

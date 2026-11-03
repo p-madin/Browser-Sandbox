@@ -100,6 +100,7 @@ class PathfinderBenchmark {
             manhattan: lastOutcome.manhattan,
             success: lastOutcome.success,
             pathLength: lastOutcome.pathLength,
+            pathCost: lastOutcome.pathCost || lastOutcome.pathLength,
             bestPath: lastOutcome.bestPath,
             uniqueCount: lastOutcome.uniqueCount,
             bestCount: lastOutcome.bestCount,

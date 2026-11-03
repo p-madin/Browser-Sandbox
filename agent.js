@@ -21,6 +21,21 @@ class agent_meta {
         }
     }
 
+    // Phase 5: Geomorphic Terrain Resistance for Kinematic Locomotion
+    getTerrainMovementResistance(cell_meta) {
+        if (!cell_meta) return 1.0;
+        if (typeof PathfinderService !== 'undefined' && typeof PathfinderService.getTerrainBaseCost === 'function') {
+            return PathfinderService.getTerrainBaseCost(cell_meta);
+        }
+        var f = cell_meta.flags || 0;
+        if ((f & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_FLOOR)) !== 0) return 1.0;
+        if ((f & CellFlags.WATER_SHALLOW) !== 0) return 1.85;
+        if ((f & CellFlags.TERRAIN_RAMP) !== 0) return 1.35;
+        if ((f & CellFlags.TERRAIN_SAND) !== 0) return 1.25;
+        if ((f & (CellFlags.GRASS | CellFlags.TERRAIN_FLORA | CellFlags.TREE)) !== 0) return 1.15;
+        return 1.10;
+    }
+
     requestPathFinder() {
         global_pathfinder_object = new pathfinder();
         var my_pathfinder_object = global_pathfinder_object;
@@ -116,7 +131,10 @@ class agent_meta {
             self.setHeading(targetHeading);
         }
 
-        var duration = isDiagonal ? self.step_duration * 1.414 : self.step_duration;
+        // Phase 5: Terrain-Weighted Kinematic Duration Modulation
+        var resistance = self.getTerrainMovementResistance(to_meta);
+        var baseStepTime = self.step_duration * resistance;
+        var duration = isDiagonal ? baseStepTime * 1.414 : baseStepTime;
         var startTime = null;
 
         globalGridObject.updateGrid(self, false);
@@ -141,6 +159,11 @@ class agent_meta {
                 self.y = to_meta.my_y;
                 self.agentCellOccupied = to_meta;
                 my_cache_offset = to_meta.my_cell_ref;
+
+                // Phase 4: Spawn step kinematic effect (wading ripple, sand footprint, grass dust)
+                if (globalGridObject && typeof globalGridObject.spawnStepKinematicEffect === 'function') {
+                    globalGridObject.spawnStepKinematicEffect(to_meta, self.heading);
+                }
 
                 var isFinal = (i_path.length === 1);
 

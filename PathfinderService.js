@@ -10,6 +10,7 @@ class PathResult {
         success = false,
         bestPath = null,
         pathLength = 0,
+        pathCost = 0,
         bestOptions = [],
         uniqueOptions = [],
         complexity = 0,
@@ -22,6 +23,7 @@ class PathResult {
         this.success = success;
         this.bestPath = bestPath;
         this.pathLength = pathLength;
+        this.pathCost = pathCost;
         this.bestOptions = bestOptions;
         this.uniqueOptions = uniqueOptions;
         this.complexity = complexity;
@@ -55,9 +57,10 @@ class IPathfinderStrategy {
             var dx = Math.abs(candidateMeta.my_x - toMeta.my_x);
             var dy = Math.abs(candidateMeta.my_y - toMeta.my_y);
             var dist = Math.sqrt(dx * dx + dy * dy);
-            temp.push({ cell: cellObj, distance: dist });
+            var cost = typeof PathfinderService !== 'undefined' ? PathfinderService.getTerrainBaseCost(candidateMeta) : 1.0;
+            temp.push({ cell: cellObj, distance: dist, cost: cost });
         }
-        temp.sort((a, b) => a.distance - b.distance);
+        temp.sort((a, b) => (a.distance * a.cost) - (b.distance * b.cost));
         return temp;
     }
 }
@@ -141,10 +144,20 @@ class GptBacktrackingDfsStrategy extends IPathfinderStrategy {
         const manhattan = dx + dy;
         const optimality = pathLength > 0 ? Number((pathLength / (euclidean || 1)).toFixed(2)) : 0;
 
+        let totalCost = 0;
+        if (bestPath) {
+            for (let s = 0; s < bestPath.length; s++) {
+                const edge = bestPath[s];
+                const toM = edge.stepOptionToCell ? (typeof edge.stepOptionToCell.getCellMeta === 'function' ? edge.stepOptionToCell.getCellMeta() : edge.stepOptionToCell) : null;
+                totalCost += PathfinderService.getTerrainBaseCost(toM);
+            }
+        }
+
         return new PathResult({
             success: bestOptions.length > 0,
             bestPath: bestPath,
             pathLength: pathLength,
+            pathCost: Number(totalCost.toFixed(2)),
             bestOptions: bestOptions,
             uniqueOptions: uniqueOptions,
             complexity: complexity,
@@ -238,10 +251,20 @@ class LegacyDfsStrategy extends IPathfinderStrategy {
         const manhattan = dx + dy;
         const optimality = pathLength > 0 ? Number((pathLength / (euclidean || 1)).toFixed(2)) : 0;
 
+        let totalCost = 0;
+        if (bestPath) {
+            for (let s = 0; s < bestPath.length; s++) {
+                const edge = bestPath[s];
+                const toM = edge.stepOptionToCell ? (typeof edge.stepOptionToCell.getCellMeta === 'function' ? edge.stepOptionToCell.getCellMeta() : edge.stepOptionToCell) : null;
+                totalCost += PathfinderService.getTerrainBaseCost(toM);
+            }
+        }
+
         return new PathResult({
             success: bestOptions.length > 0,
             bestPath: bestPath,
             pathLength: pathLength,
+            pathCost: Number(totalCost.toFixed(2)),
             bestOptions: bestOptions,
             uniqueOptions: uniqueOptions,
             complexity: complexity,
@@ -408,22 +431,24 @@ class AStarStrategy extends IPathfinderStrategy {
                 const dx = Math.abs(nextMeta.my_x - currentMeta.my_x);
                 const dy = Math.abs(nextMeta.my_y - currentMeta.my_y);
                 const isDiagonal = (dx !== 0 && dy !== 0);
-                let stepCost = isDiagonal ? 1.41421356237 : 1.0;
+
+                // Phase 5: Geomorphic Terrain Movement Weighting
+                const baseCost = PathfinderService.getTerrainBaseCost(nextMeta);
+                let stepCost = isDiagonal ? baseCost * 1.41421356237 : baseCost;
+
                 if (nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR) && !nextMeta.hasFlag(CellFlags.STRUCTURE_DOOR_OPEN)) {
                     stepCost += 1.5;
                 }
-                if (nextMeta.hasFlag(CellFlags.WATER_SHALLOW) && !nextMeta.hasFlag(CellFlags.STRUCTURE_BRIDGE)) {
-                    stepCost += 1.5; // Shallow water wading penalty (bridges exempt)
-                }
 
-                // Elevation slope kinetic modifier (uphill +0.4, downhill -0.1)
+                // Elevation slope kinetic modifier (uphill effort, downhill momentum)
                 const fromElev = currentMeta.elevation !== undefined ? currentMeta.elevation : 1;
                 const toElev = nextMeta.elevation !== undefined ? nextMeta.elevation : 1;
                 const elevDelta = toElev - fromElev;
                 if (elevDelta > 0) {
                     stepCost += 0.4 * elevDelta;
                 } else if (elevDelta < 0) {
-                    stepCost = Math.max(0.2, stepCost - 0.1 * Math.abs(elevDelta));
+                    // Downhill momentum bonus, bounded by baseCost to preserve octileDistance admissibility
+                    stepCost = Math.max(baseCost, stepCost - 0.1 * Math.abs(elevDelta));
                 }
 
                 const tentativeG = currentG + stepCost;
@@ -482,7 +507,9 @@ class AStarStrategy extends IPathfinderStrategy {
 
             if (cellRef === startRef) {
                 // Reverse to get path from start -> target
-                allPaths.push([...currentEdges].reverse());
+                const reversed = [...currentEdges].reverse();
+                reversed._cost = Number(minTargetG.toFixed(2));
+                allPaths.push(reversed);
                 return;
             }
 
@@ -498,7 +525,10 @@ class AStarStrategy extends IPathfinderStrategy {
                 const StepOpt = (typeof stepOption !== 'undefined') ? stepOption : (typeof require !== 'undefined' ? require('./stepOption.js').stepOption : class {
                     constructor(f, t) { this.stepOptionFromCell = f; this.stepOptionToCell = t; this.stepOptionWeight = 1; }
                 });
-                currentEdges.push(new StepOpt(edge.fromCell, edge.toCell));
+                const step = new StepOpt(edge.fromCell, edge.toCell);
+                const toMeta = edge.toCell ? (typeof edge.toCell.getCellMeta === 'function' ? edge.toCell.getCellMeta() : edge.toCell) : null;
+                step.stepOptionWeight = PathfinderService.getTerrainBaseCost(toMeta);
+                currentEdges.push(step);
                 backtrack(fromRef, currentEdges);
                 currentEdges.pop();
                 visitedInBranch.delete(fromRef);
@@ -527,6 +557,7 @@ class AStarStrategy extends IPathfinderStrategy {
             success: true,
             bestPath: bestPath,
             pathLength: pathLength,
+            pathCost: Number(minTargetG.toFixed(2)),
             bestOptions: allPaths,
             uniqueOptions: allPaths,
             complexity: complexity,
@@ -541,6 +572,38 @@ class AStarStrategy extends IPathfinderStrategy {
  * PathfinderService: Core Production Navigation Engine
  */
 class PathfinderService {
+    /**
+     * Phase 5: Geomorphic Terrain Resistance Cost Matrix
+     * Returns the base movement cost multiplier for traversing a cell.
+     * Minimum cost is strictly >= 1.0 to preserve A* octileDistance heuristic admissibility.
+     */
+    static getTerrainBaseCost(cellMeta) {
+        if (!cellMeta) return 1.10;
+        const f = cellMeta.flags || 0;
+        // 1. Bridges, paved stone paths, floor decks: smooth highway (1.00)
+        if ((f & (CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_FLOOR)) !== 0) {
+            return 1.00;
+        }
+        // 2. Shallow water (without bridge): fluid drag (1.85)
+        if ((f & CellFlags.WATER_SHALLOW) !== 0) {
+            return 1.85;
+        }
+        // 3. Earthen ramps: slope incline (1.35)
+        if ((f & CellFlags.TERRAIN_RAMP) !== 0) {
+            return 1.35;
+        }
+        // 4. Alluvial sand: loose footing (1.25)
+        if ((f & CellFlags.TERRAIN_SAND) !== 0) {
+            return 1.25;
+        }
+        // 5. Meadow grass and wild flora: foliage resistance (1.15)
+        if ((f & (CellFlags.GRASS | CellFlags.TERRAIN_FLORA | CellFlags.TREE)) !== 0) {
+            return 1.15;
+        }
+        // 6. Standard ground / dirt baseline (1.10)
+        return 1.10;
+    }
+
     constructor() {
         this.strategies = new Map();
         this.registerStrategy("astar", new AStarStrategy());

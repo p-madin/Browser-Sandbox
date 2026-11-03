@@ -21,8 +21,9 @@ class PathOptionsRenderer {
         }
 
         const stepCount = uniqueOptions[0].length;
+        const costStr = (uniqueOptions[0]._cost !== undefined) ? ` · cost ${uniqueOptions[0]._cost.toFixed(1)}` : '';
         if (this.summary) {
-            this.summary.textContent = `Options (${uniqueOptions.length} route${uniqueOptions.length > 1 ? 's' : ''} — ${stepCount} steps)`;
+            this.summary.textContent = `Options (${uniqueOptions.length} route${uniqueOptions.length > 1 ? 's' : ''} — ${stepCount} steps${costStr})`;
         }
 
         var frag = document.createDocumentFragment();
@@ -30,19 +31,20 @@ class PathOptionsRenderer {
         if (uniqueOptions.length > 1) {
             var headerBadge = document.createElement("div");
             headerBadge.className = "path_options_badge";
-            headerBadge.textContent = `⭐ ${uniqueOptions.length} Equal Routes (${stepCount} steps)`;
+            headerBadge.textContent = `⭐ ${uniqueOptions.length} Equal Routes (${stepCount} steps${costStr})`;
             frag.appendChild(headerBadge);
         }
 
         for (var i = 0; i < uniqueOptions.length; i++) {
             const pathIndex = i;
             const currentRoute = uniqueOptions[pathIndex];
+            const routeCost = (currentRoute._cost !== undefined) ? ` · cost ${currentRoute._cost.toFixed(1)}` : '';
 
             var row = document.createElement("div");
             row.className = pathIndex === 0 ? "path_option active" : "path_option";
             row.setAttribute("data-path", pathIndex);
             row.title = "Click to walk this route, hover to preview";
-            row.innerHTML = `<span>Route #${pathIndex + 1}</span> <span class="path_len">${currentRoute.length} steps</span>`;
+            row.innerHTML = `<span>Route #${pathIndex + 1}</span> <span class="path_len">${currentRoute.length} steps${routeCost}</span>`;
 
             // Hover preview
             row.addEventListener("mouseover", (e) => {

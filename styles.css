@@ -362,26 +362,20 @@ body>div.canvas_container {
 }
 
 .terrain_contour.contour_elev_2 {
-    fill: #15803d;
-    stroke: #14532d;
-    stroke-width: 1.2px;
-    stroke-linejoin: round;
+    fill: url(#grad_elev2_relief);
+    stroke: none;
     opacity: 1;
 }
 
 .terrain_contour.contour_elev_3 {
-    fill: #475569;
-    stroke: #1e293b;
-    stroke-width: 1.5px;
-    stroke-linejoin: round;
+    fill: url(#grad_elev3_relief);
+    stroke: none;
     opacity: 1;
 }
 
 .terrain_contour.contour_chasm {
-    fill: #030712;
-    stroke: #000000;
-    stroke-width: 2.0px;
-    stroke-linejoin: round;
+    fill: url(#grad_chasm_depth);
+    stroke: none;
     opacity: 1;
 }
 
@@ -402,12 +396,46 @@ body>div.canvas_container {
 }
 
 .terrain_contour.contour_cliff {
-    fill: #334155;
-    stroke: #0f172a;
-    stroke-width: 1.5px;
-    stroke-dasharray: 4 2;
-    stroke-linejoin: round;
+    fill: url(#grad_cliff_relief);
+    stroke: none;
     opacity: 1;
+}
+
+/* Phase 3: Directional Topographic Shaded Relief (Sunlit Ridges & Cast Shadows) */
+.terrain_relief {
+    pointer-events: none;
+    fill: none;
+}
+
+.terrain_relief.relief_sunlit {
+    stroke: #f8fafc;
+    stroke-width: 1.6px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.85;
+}
+
+.terrain_relief.relief_shadow {
+    stroke: #020617;
+    stroke-width: 2.4px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.75;
+}
+
+/* Phase 3 Iteration: Directional Structure & Tree Shadows */
+.terrain_shadow {
+    pointer-events: none;
+    fill: #020617;
+    stroke: none;
+}
+
+.terrain_shadow.structure_shadow {
+    opacity: 0.35;
+}
+
+.terrain_shadow.tree_shadow {
+    opacity: 0.28;
 }
 
 .terrain_contour.contour_ramp {
@@ -495,9 +523,11 @@ body>div.canvas_container {
     cursor: pointer;
 }
 
-/* Bridges & Structure Deck Layer (Visual Overlays - Pointer events pass through to #tiles_layer) */
+/* Bridges, Structure Decks & Wall Layers (Visual Overlays - Pointer events pass through to #tiles_layer) */
 #bridges_layer,
-#bridges_layer * {
+#bridges_layer *,
+#structures_layer,
+#structures_layer * {
     pointer-events: none !important;
 }
 
@@ -1301,4 +1331,219 @@ body>div.canvas_container {
     padding: 3px 6px;
     font-size: 11px;
     width: 110px;
+}
+
+/* Phase 4: Hydrological Kinematics (Coastline Tidal Waves, Pure Swells & Wading Ripples) */
+
+/* 1. Coastline Tidal Wave Keyframes */
+@keyframes tidal-wave-breathe {
+    0%, 100% {
+        transform: translateY(0px) scaleY(1);
+        opacity: 0.35;
+    }
+    45% {
+        transform: translateY(2.6px) scaleY(1.15);
+        opacity: 0.95;
+    }
+    70% {
+        transform: translateY(1.4px) scaleY(1.05);
+        opacity: 0.60;
+    }
+}
+
+@keyframes tidal-wave-breathe-opposing {
+    0%, 100% {
+        transform: translateY(0px) scaleY(1);
+        opacity: 0.35;
+    }
+    45% {
+        transform: translateY(-2.6px) scaleY(1.15);
+        opacity: 0.95;
+    }
+    70% {
+        transform: translateY(-1.4px) scaleY(1.05);
+        opacity: 0.60;
+    }
+}
+
+@keyframes tidal-corner-breathe {
+    0%, 100% {
+        transform: translate(0px, 0px) scale(0.96);
+        opacity: 0.35;
+    }
+    45% {
+        transform: translate(-2.0px, 2.0px) scale(1.08);
+        opacity: 0.95;
+    }
+    70% {
+        transform: translate(-1.1px, 1.1px) scale(1.03);
+        opacity: 0.60;
+    }
+}
+
+@keyframes tidal-u-breathe {
+    0%, 100% {
+        transform: scale(1.0);
+        opacity: 0.35;
+    }
+    45% {
+        transform: scale(0.82, 0.84);
+        opacity: 0.95;
+    }
+    70% {
+        transform: scale(0.91, 0.92);
+        opacity: 0.60;
+    }
+}
+
+@keyframes tidal-island-breathe {
+    0%, 100% {
+        transform: scale(1.0);
+        opacity: 0.35;
+    }
+    45% {
+        transform: scale(0.80);
+        opacity: 0.95;
+    }
+    70% {
+        transform: scale(0.90);
+        opacity: 0.60;
+    }
+}
+
+.reticle_wave {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.78);
+    stroke-width: 1.35px;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.reticle_wave_edge {
+    animation: tidal-wave-breathe 2.8s ease-in-out infinite;
+}
+
+.reticle_wave_edge_opposing {
+    animation: tidal-wave-breathe-opposing 2.8s ease-in-out infinite;
+}
+
+.reticle_wave_corner {
+    animation: tidal-corner-breathe 2.8s ease-in-out infinite;
+}
+
+.reticle_wave_u {
+    transform-origin: 10px 20px;
+    animation: tidal-u-breathe 2.8s ease-in-out infinite;
+}
+
+.reticle_wave_island {
+    transform-origin: 10px 10px;
+    animation: tidal-island-breathe 2.8s ease-in-out infinite;
+}
+
+/* 2. Open Water Pure Wave Swells */
+@keyframes pure-wave-swell {
+    0%, 25%, 75%, 100% {
+        opacity: 0;
+        transform: translateY(0px) scale(0.6);
+    }
+    45% {
+        opacity: 0.85;
+        transform: translateY(-1.5px) scale(1.05);
+    }
+    60% {
+        opacity: 0.35;
+        transform: translateY(-2.8px) scale(1.2);
+    }
+}
+
+.cell_pure_wave {
+    pointer-events: none;
+}
+
+.pure_wave {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.72);
+    stroke-width: 1.3px;
+    stroke-linecap: round;
+    animation: pure-wave-swell 7.0s ease-in-out infinite;
+}
+
+.pure_wave_shallow .pure_wave {
+    stroke: rgba(255, 255, 255, 0.85);
+}
+
+/* 3. Player Step Kinematic Micro-Interactions */
+@keyframes wading-ripple {
+    0% {
+        transform: scale(0.3);
+        opacity: 0.95;
+        stroke-width: 1.8px;
+    }
+    100% {
+        transform: scale(2.6);
+        opacity: 0;
+        stroke-width: 0.3px;
+    }
+}
+
+@keyframes sand-footprint-fade {
+    0% {
+        opacity: 0.85;
+        transform: scale(1.0);
+    }
+    60% {
+        opacity: 0.70;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+@keyframes grass-dust-puff {
+    0% {
+        transform: translateY(0px) scale(0.4);
+        opacity: 0.85;
+    }
+    50% {
+        opacity: 0.65;
+    }
+    100% {
+        transform: translateY(-4px) scale(1.3);
+        opacity: 0;
+    }
+}
+
+.effect_instance {
+    pointer-events: none;
+    transform-origin: 10px 10px;
+}
+
+.wading_ripple_instance {
+    animation: wading-ripple 0.6s ease-out forwards;
+}
+
+.wading_ripple_shape {
+    fill: rgba(186, 230, 253, 0.28);
+    stroke: #bae6fd;
+}
+
+.sand_footprint_instance {
+    animation: sand-footprint-fade 1.2s ease-out forwards;
+}
+
+.sand_print_shape {
+    fill: #b45309;
+    opacity: 0.75;
+}
+
+.grass_dust_instance {
+    animation: grass-dust-puff 0.5s ease-out forwards;
+}
+
+.grass_dust_shape {
+    fill: #86efac;
+    stroke: #22c55e;
+    stroke-width: 0.5px;
 }

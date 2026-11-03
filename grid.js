@@ -17,6 +17,26 @@ const RETICLE_SYMBOLS = [
     "#symbol_reticle_island"    // 15: all 4
 ];
 
+// Phase 4: Hydrological Water Reticle Symbols (with animated tidal wave crests)
+const RETICLE_WATER_SYMBOLS = [
+    null,
+    "#symbol_reticle_edge_water",     // 1: N
+    "#symbol_reticle_edge_water",     // 2: E
+    "#symbol_reticle_corner_water",   // 3: N+E
+    "#symbol_reticle_edge_water",     // 4: S
+    "#symbol_reticle_parallel_water", // 5: N+S
+    "#symbol_reticle_corner_water",   // 6: E+S
+    "#symbol_reticle_u_water",        // 7: N+E+S (open W)
+    "#symbol_reticle_edge_water",     // 8: W
+    "#symbol_reticle_corner_water",   // 9: W+N
+    "#symbol_reticle_parallel_water", // 10: E+W
+    "#symbol_reticle_u_water",        // 11: W+N+E (open S)
+    "#symbol_reticle_corner_water",   // 12: S+W
+    "#symbol_reticle_u_water",        // 13: S+W+N (open E)
+    "#symbol_reticle_u_water",        // 14: E+S+W (open N)
+    "#symbol_reticle_island_water"    // 15: all 4
+];
+
 const RETICLE_ANGLES = [
     0, 0, 90, 0,
     180, 0, 90, 90,
@@ -46,11 +66,15 @@ class frame_meta {
     ramp_layer;
     scatter_layer;
     bridges_layer;
+    structures_layer;
     features_layer;
     player_layer;
     roof_layer;
     ambient_layer;
     reticles_layer;
+    player_effects_layer;
+    effect_elements = new Array();
+    effect_pool_index = 0;
     player_avatar;
     player_rotator;
     frame_size_width = 0;
@@ -74,6 +98,7 @@ class frame_meta {
     elev3_elements = new Array();
     ramp_elements = new Array();
     bridge_elements = new Array();
+    structure_elements = new Array();
     tree_elements = new Array();
     flora_elements = new Array();
     roof_elements = new Array();
@@ -131,13 +156,55 @@ class frame_meta {
         addGradientStop(gradTree, "100%", "#052e16");
         defs.appendChild(gradTree);
 
+        // Phase 3: Directional Topographic Shaded Relief Gradients (Sun Azimuth Theta = 315 deg, Northwest Sun)
+        const createReliefGrad = (id, x1, y1, x2, y2, stops) => {
+            var g = create_svg_element("linearGradient");
+            g.setAttribute("id", id);
+            g.setAttribute("x1", x1);
+            g.setAttribute("y1", y1);
+            g.setAttribute("x2", x2);
+            g.setAttribute("y2", y2);
+            for (const st of stops) {
+                addGradientStop(g, st.offset, st.color, st.opacity !== undefined ? String(st.opacity) : "1");
+            }
+            defs.appendChild(g);
+        };
+
+        createReliefGrad("grad_elev2_relief", "0%", "0%", "100%", "100%", [
+            { offset: "0%", color: "#22c55e" },
+            { offset: "40%", color: "#16a34a" },
+            { offset: "80%", color: "#15803d" },
+            { offset: "100%", color: "#14532d" }
+        ]);
+
+        createReliefGrad("grad_elev3_relief", "0%", "0%", "100%", "100%", [
+            { offset: "0%", color: "#94a3b8" },
+            { offset: "35%", color: "#64748b" },
+            { offset: "70%", color: "#475569" },
+            { offset: "100%", color: "#1e293b" }
+        ]);
+
+        createReliefGrad("grad_cliff_relief", "0%", "0%", "100%", "100%", [
+            { offset: "0%", color: "#64748b" },
+            { offset: "45%", color: "#475569" },
+            { offset: "80%", color: "#334155" },
+            { offset: "100%", color: "#0f172a" }
+        ]);
+
+        createReliefGrad("grad_chasm_depth", "0%", "0%", "50%", "100%", [
+            { offset: "0%", color: "#312e81" },
+            { offset: "25%", color: "#1e1b4b" },
+            { offset: "65%", color: "#09090b" },
+            { offset: "100%", color: "#000000" }
+        ]);
+
         // SVG Symbol: Organic Tree Feature (Instanced via <use>)
         var symTree = create_svg_element("g");
         symTree.setAttribute("id", "symbol_tree");
         var symTreeShadow = create_svg_element("circle");
         symTreeShadow.setAttribute("cx", (this.cell_size / 2) + "px");
-        symTreeShadow.setAttribute("cy", (this.cell_size / 2 + 1.5) + "px");
-        symTreeShadow.setAttribute("r", (this.cell_size * 0.40) + "px");
+        symTreeShadow.setAttribute("cy", (this.cell_size / 2 + 0.8) + "px");
+        symTreeShadow.setAttribute("r", (this.cell_size * 0.18) + "px");
         symTreeShadow.setAttribute("class", "tree_shadow");
         symTree.appendChild(symTreeShadow);
         var symTreeCanopy = create_svg_element("circle");
@@ -297,7 +364,7 @@ class frame_meta {
         defs.appendChild(createTerrainFilter("terrain_smooth_ramp", "0.040", "3.5", 1, "2.8", "fractalNoise"));
 
         // SVG Symbols: Directional Prefab Cell Reticles (Phase 2 - Architecture 1: Restrained Plain Fills)
-        const addReticleSymbol = (id, fillD, strokeD) => {
+        const addReticleSymbol = (id, fillD, strokeD, waves = null) => {
             var sym = create_svg_element("g");
             sym.setAttribute("id", id);
 
@@ -313,38 +380,142 @@ class frame_meta {
             strokePath.setAttribute("d", strokeD);
             sym.appendChild(strokePath);
 
+            // Phase 4: Hydrological breathing tidal wave crests
+            if (waves) {
+                var waveList = Array.isArray(waves) ? waves : [waves];
+                for (var w = 0; w < waveList.length; w++) {
+                    var waveInfo = waveList[w];
+                    var wavePath = create_svg_element("path");
+                    wavePath.setAttribute("class", "reticle_wave " + waveInfo.cls);
+                    wavePath.setAttribute("d", waveInfo.d);
+                    sym.appendChild(wavePath);
+                }
+            }
+
             defs.appendChild(sym);
         };
 
         // 1. Edge: fill from Y=1.5 down to Y=20, stroke along Y=1.5
-        addReticleSymbol("symbol_reticle_edge", 
-            "M 0 1.5 L 20 1.5 L 20 20 L 0 20 Z", 
+        addReticleSymbol("symbol_reticle_edge",
+            "M 0 1.5 L 20 1.5 L 20 20 L 0 20 Z",
             "M 0 1.5 L 20 1.5"
         );
 
         // 2. Corner: fill restrained inside rounded L-bracket
-        addReticleSymbol("symbol_reticle_corner", 
-            "M 0 20 L 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z", 
+        addReticleSymbol("symbol_reticle_corner",
+            "M 0 20 L 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z",
             "M 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20"
         );
 
         // 3. Parallel: fill between Y=1.5 and Y=18.5
-        addReticleSymbol("symbol_reticle_parallel", 
-            "M 0 1.5 L 20 1.5 L 20 18.5 L 0 18.5 Z", 
+        addReticleSymbol("symbol_reticle_parallel",
+            "M 0 1.5 L 20 1.5 L 20 18.5 L 0 18.5 Z",
             "M 0 1.5 L 20 1.5 M 0 18.5 L 20 18.5"
         );
 
         // 4. U-Shape: fill restrained inside U-cup
-        addReticleSymbol("symbol_reticle_u", 
-            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z", 
+        addReticleSymbol("symbol_reticle_u",
+            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z",
             "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20"
         );
 
         // 5. Island: fill restrained inside 4-corner rounded frame
-        addReticleSymbol("symbol_reticle_island", 
-            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z", 
+        addReticleSymbol("symbol_reticle_island",
+            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z",
             "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z"
         );
+
+        // Phase 4: Hydrological water reticle symbols with animated tidal wave crests
+        addReticleSymbol("symbol_reticle_edge_water",
+            "M 0 1.5 L 20 1.5 L 20 20 L 0 20 Z",
+            "M 0 1.5 L 20 1.5",
+            { d: "M 0 3.2 Q 5 1.6 10 3.2 Q 15 4.8 20 3.2", cls: "reticle_wave_edge" }
+        );
+
+        addReticleSymbol("symbol_reticle_corner_water",
+            "M 0 20 L 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z",
+            "M 0 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20",
+            { d: "M 0 3.8 Q 3.5 2.5 7 3.8 Q 10.5 5.1 13.5 4.0 Q 16.0 4.0 16.0 6.5 Q 14.7 9.5 16.0 13.0 Q 17.3 16.5 16.0 20", cls: "reticle_wave_corner" }
+        );
+
+        addReticleSymbol("symbol_reticle_parallel_water",
+            "M 0 1.5 L 20 1.5 L 20 18.5 L 0 18.5 Z",
+            "M 0 1.5 L 20 1.5 M 0 18.5 L 20 18.5",
+            [
+                { d: "M 0 3.2 Q 5 1.6 10 3.2 Q 15 4.8 20 3.2", cls: "reticle_wave_edge" },
+                { d: "M 0 16.8 Q 5 15.2 10 16.8 Q 15 18.4 20 16.8", cls: "reticle_wave_edge_opposing" }
+            ]
+        );
+
+        addReticleSymbol("symbol_reticle_u_water",
+            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20 Z",
+            "M 1.5 20 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 20",
+            { d: "M 3.8 20 Q 2.6 16.5 3.8 13.0 Q 5.0 9.5 3.8 6.5 Q 3.8 3.8 6.5 3.8 Q 8.5 2.5 10 3.8 Q 11.5 5.1 13.5 3.8 Q 16.2 3.8 16.2 6.5 Q 15.0 9.5 16.2 13.0 Q 17.4 16.5 16.2 20", cls: "reticle_wave_u" }
+        );
+
+        addReticleSymbol("symbol_reticle_island_water",
+            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z",
+            "M 5.5 1.5 L 14.5 1.5 Q 18.5 1.5 18.5 5.5 L 18.5 14.5 Q 18.5 18.5 14.5 18.5 L 5.5 18.5 Q 1.5 18.5 1.5 14.5 L 1.5 5.5 Q 1.5 1.5 5.5 1.5 Z",
+            { d: "M 6.5 3.8 Q 10 2.5 13.5 3.8 Q 16.2 3.8 16.2 6.5 Q 17.5 10 16.2 13.5 Q 16.2 16.2 13.5 16.2 Q 10 17.5 6.5 16.2 Q 3.8 16.2 3.8 13.5 Q 2.5 10 3.8 6.5 Q 3.8 3.8 6.5 3.8 Z", cls: "reticle_wave_island" }
+        );
+
+        // Open Water "Pure" Tile Wave Swell Symbol
+        var pureWaveSym = create_svg_element("g");
+        pureWaveSym.setAttribute("id", "symbol_pure_wave");
+        var pureWavePath = create_svg_element("path");
+        pureWavePath.setAttribute("class", "pure_wave");
+        pureWavePath.setAttribute("d", "M 3 10 Q 7 7.5 11 10 Q 15 12.5 19 10");
+        pureWaveSym.appendChild(pureWavePath);
+        defs.appendChild(pureWaveSym);
+
+        // Phase 4: Step Kinematic Micro-Interaction Symbols
+        // 1. Wading ripple in shallow water
+        var rippleSym = create_svg_element("g");
+        rippleSym.setAttribute("id", "symbol_wading_ripple");
+        var rippleEl = create_svg_element("ellipse");
+        rippleEl.setAttribute("cx", "10");
+        rippleEl.setAttribute("cy", "10");
+        rippleEl.setAttribute("rx", "6");
+        rippleEl.setAttribute("ry", "3.6");
+        rippleEl.setAttribute("class", "wading_ripple_shape");
+        rippleSym.appendChild(rippleEl);
+        defs.appendChild(rippleSym);
+
+        // 2. Wet sand footprint indentation
+        var sandSym = create_svg_element("g");
+        sandSym.setAttribute("id", "symbol_sand_footprint");
+        var pLeft = create_svg_element("ellipse");
+        pLeft.setAttribute("cx", "7");
+        pLeft.setAttribute("cy", "10");
+        pLeft.setAttribute("rx", "1.8");
+        pLeft.setAttribute("ry", "3");
+        pLeft.setAttribute("class", "sand_print_shape");
+        sandSym.appendChild(pLeft);
+        var pRight = create_svg_element("ellipse");
+        pRight.setAttribute("cx", "13");
+        pRight.setAttribute("cy", "10");
+        pRight.setAttribute("rx", "1.8");
+        pRight.setAttribute("ry", "3");
+        pRight.setAttribute("class", "sand_print_shape");
+        sandSym.appendChild(pRight);
+        defs.appendChild(sandSym);
+
+        // 3. Dry grass / turf dust puff
+        var dustSym = create_svg_element("g");
+        dustSym.setAttribute("id", "symbol_grass_dust");
+        var d1 = create_svg_element("circle");
+        d1.setAttribute("cx", "7.5");
+        d1.setAttribute("cy", "9.5");
+        d1.setAttribute("r", "1.8");
+        d1.setAttribute("class", "grass_dust_shape");
+        dustSym.appendChild(d1);
+        var d2 = create_svg_element("circle");
+        d2.setAttribute("cx", "12.5");
+        d2.setAttribute("cy", "10.5");
+        d2.setAttribute("r", "1.4");
+        d2.setAttribute("class", "grass_dust_shape");
+        dustSym.appendChild(d2);
+        defs.appendChild(dustSym);
 
         this.frame_element.appendChild(defs);
 
@@ -398,11 +569,42 @@ class frame_meta {
         this.scatter_layer.style.pointerEvents = "none";
         this.world_viewport.appendChild(this.scatter_layer);
 
-        // Layer 3: Bridges layer (Engineered bridges cleanly span over contours)
+        // Layer 2f: Dedicated Player Kinematic Effects Layer (Wading ripples, footprints, dust puffs)
+        this.player_effects_layer = create_svg_element("g");
+        this.player_effects_layer.setAttribute("id", "player_effects_layer");
+        this.player_effects_layer.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.player_effects_layer);
+
+        // Pre-warm 8 kinematic effect instances (container <g> with inner <use>)
+        this.effect_elements = new Array(8);
+        this.effect_pool_index = 0;
+        for (var ep = 0; ep < 8; ep++) {
+            var g = create_svg_element("g");
+            g.setAttribute("class", "effect_container");
+            g.style.display = "none";
+            g._vis = false;
+
+            var ef = create_svg_element("use");
+            ef.setAttribute("href", "#symbol_wading_ripple");
+            ef.setAttribute("class", "effect_instance");
+            ef.style.pointerEvents = "none";
+            g.appendChild(ef);
+
+            this.player_effects_layer.appendChild(g);
+            this.effect_elements[ep] = g;
+        }
+
+        // Layer 3: Bridges layer (Engineered bridges, paths, and floors cleanly span over contours)
         this.bridges_layer = create_svg_element("g");
         this.bridges_layer.setAttribute("id", "bridges_layer");
         this.bridges_layer.style.pointerEvents = "none";
         this.world_viewport.appendChild(this.bridges_layer);
+
+        // Layer 3b: Vertical structures layer (Walls, doors, barricades, fixtures)
+        this.structures_layer = create_svg_element("g");
+        this.structures_layer.setAttribute("id", "structures_layer");
+        this.structures_layer.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.structures_layer);
 
         // Layer 1: Vector Terrain Landmark Paths (Phase 6)
         if (typeof TerrainPathService !== 'undefined' && typeof globalMapObject !== 'undefined' && globalMapObject) {
@@ -458,6 +660,7 @@ class frame_meta {
         this.elev3_elements = new Array();
         this.ramp_elements = new Array();
         this.bridge_elements = new Array();
+        this.structure_elements = new Array();
         this.tree_elements = new Array();
         this.flora_elements = new Array();
         this.roof_elements = new Array();
@@ -527,6 +730,7 @@ class frame_meta {
             }
         };
         warm(this.bridge_elements, this.bridges_layer, "#symbol_tile", 120, "cell structure_path");
+        warm(this.structure_elements, this.structures_layer, "#symbol_tile", 120, "cell structure_wall timber");
         warm(this.tree_elements, this.features_layer, "#symbol_tree", 300, "cell_tree_feature");
         warm(this.flora_elements, this.features_layer, "#symbol_flora", 200, "cell_flora_feature");
         warm(this.roof_elements, this.roof_layer, "#symbol_tile", 100, "cell_roof timber occluded");
@@ -563,7 +767,7 @@ class frame_meta {
         return 0;
     }
 
-    ensureSymbolInstance(pool, layer, symbolHref, k, className, transform = null) {
+    ensureSymbolInstance(pool, layer, symbolHref, k, className, transform = null, animDelay = null) {
         var el = pool[k];
         if (!el) {
             var freePool = this.getFreePool(pool);
@@ -613,6 +817,16 @@ class frame_meta {
             el.setAttribute("class", className);
             el._lastClass = className;
         }
+
+        if (animDelay !== null) {
+            if (el._lastAnimDelay !== animDelay) {
+                el.style.animationDelay = animDelay;
+                el._lastAnimDelay = animDelay;
+            }
+        } else if (el._lastAnimDelay) {
+            el.style.animationDelay = "";
+            el._lastAnimDelay = null;
+        }
         return el;
     }
 
@@ -621,6 +835,10 @@ class frame_meta {
         if (el) {
             pool[k] = null;
             this.getFreePool(pool).push(el);
+            if (el._lastAnimDelay) {
+                el.style.animationDelay = "";
+                el._lastAnimDelay = null;
+            }
         }
     }
 
@@ -673,6 +891,49 @@ class frame_meta {
         }
         if (this.roof_layer && this.roof_layer._lastVis === "block") {
             this.roof_layer.style.transform = tf;
+        }
+    }
+
+    // Phase 4: Dynamic Locomotion Particle Spawner (Wading ripples, footprints, dust puffs)
+    spawnStepKinematicEffect(to_meta, heading) {
+        if (!to_meta || !this.effect_elements || this.effect_elements.length === 0) return;
+        var f = to_meta.flags;
+
+        var symHref = null;
+        var effectClass = null;
+
+        if (f & CellFlags.WATER_SHALLOW) {
+            symHref = "#symbol_wading_ripple";
+            effectClass = "effect_instance wading_ripple_instance";
+        } else if (f & CellFlags.TERRAIN_SAND) {
+            symHref = "#symbol_sand_footprint";
+            effectClass = "effect_instance sand_footprint_instance";
+        } else if ((f & CellFlags.GRASS) || ((f & CellFlags.TERRAIN_FLORA) && !(f & CellFlags.STRUCTURE_FLOOR))) {
+            symHref = "#symbol_grass_dust";
+            effectClass = "effect_instance grass_dust_instance";
+        }
+
+        if (!symHref) return;
+
+        var g = this.effect_elements[this.effect_pool_index];
+        this.effect_pool_index = (this.effect_pool_index + 1) % this.effect_elements.length;
+
+        // Position effect container at center cell in world_viewport coordinates
+        var cx = this.grid_mid_x * this.cell_size;
+        var cy = this.grid_mid_y * this.cell_size;
+        var rot = heading || 0;
+
+        g.setAttribute("transform", `translate(${cx}, ${cy}) rotate(${rot}, 10, 10)`);
+        if (!g._vis) {
+            g.style.display = "block";
+            g._vis = true;
+        }
+
+        var useEl = g.firstElementChild;
+        if (useEl) {
+            useEl.setAttribute("href", symHref);
+            useEl.setAttribute("class", "effect_instance");
+            useEl.setAttribute("class", effectClass);
         }
     }
 
@@ -753,6 +1014,12 @@ class frame_meta {
                     const mask = (catN !== cat ? 1 : 0) | (catE !== cat ? 2 : 0) | (catS !== cat ? 4 : 0) | (catW !== cat ? 8 : 0);
                     if (mask > 0) {
                         reticleKey = (cat << 4) | mask;
+                    } else if (cat === 2 || cat === 3) {
+                        // Open Water "Pure" Tile Swells (sparse ~25% hash)
+                        if (((map_x * 37 + map_y * 17) & 3) === 0) {
+                            const delayIdx = (map_x * 19 + map_y * 31) % 70;
+                            reticleKey = (cat << 16) | 0x8000 | delayIdx;
+                        }
                     }
                 }
 
@@ -760,14 +1027,21 @@ class frame_meta {
                     this.slot_reticle_state[frame_count] = reticleKey;
                     if (reticleKey === 0) {
                         this.hideSymbolInstance(this.reticle_elements, frame_count);
+                    } else if ((reticleKey & 0x8000) !== 0) {
+                        const cellCat = (reticleKey >> 16) & 0xFF;
+                        const cls = (cellCat === 3) ? "cell_pure_wave pure_wave_shallow" : "cell_pure_wave pure_wave_deep";
+                        const delay = -((reticleKey & 0x7F) / 10) + "s";
+                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, "#symbol_pure_wave", frame_count, cls, null, delay);
                     } else {
                         const mask = reticleKey & 0xF;
-                        const sym = RETICLE_SYMBOLS[mask];
+                        const cellCat = (reticleKey >> 4) & 0xF;
+                        const isWater = (cellCat === 2 || cellCat === 3);
+                        const sym = isWater ? RETICLE_WATER_SYMBOLS[mask] : RETICLE_SYMBOLS[mask];
                         const ang = RETICLE_ANGLES[mask];
-                        const cls = RETICLE_CLASSES[cat];
+                        const cls = RETICLE_CLASSES[cellCat];
                         const sy = j * this.cell_size;
                         const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
-                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, tf);
+                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, tf, null);
                     }
                 }
 
@@ -791,9 +1065,13 @@ class frame_meta {
             const flags = cell_object.flags;
 
             const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
-            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
+            const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
             if (!hasStructureDeck) {
                 this.hideSymbolInstance(this.bridge_elements, k);
+            }
+            if (!hasStructureWall) {
+                this.hideSymbolInstance(this.structure_elements, k);
             }
             if (!((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding)) {
                 this.hideSymbolInstance(this.tree_elements, k);
@@ -816,10 +1094,14 @@ class frame_meta {
             var cell_element = this.rect_elements[k];
 
             const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
-            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
+            const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
 
             if (hasStructureDeck) {
                 this.ensureSymbolInstance(this.bridge_elements, this.bridges_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+            }
+            if (hasStructureWall) {
+                this.ensureSymbolInstance(this.structure_elements, this.structures_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
             }
             if ((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding) {
                 this.ensureSymbolInstance(this.tree_elements, this.features_layer, "#symbol_tree", k, "cell_tree_feature");
@@ -862,6 +1144,7 @@ class frame_meta {
             }
         };
         toggleLayerVis(this.bridges_layer, this.bridge_elements);
+        toggleLayerVis(this.structures_layer, this.structure_elements);
         toggleLayerVis(this.roof_layer, this.roof_elements);
         toggleLayerVis(this.reticles_layer, this.reticle_elements);
 
@@ -906,10 +1189,21 @@ class frame_meta {
             i_agent.agentCellOccupied = this.all_cells[0];
         }
     }
+
+    setSunAzimuth(deg) {
+        if (this.terrainPathService && typeof this.terrainPathService.setSunAzimuth === 'function') {
+            this.terrainPathService.setSunAzimuth(deg);
+        }
+    }
 }
 
 if (typeof window !== 'undefined') {
     window.frame_meta = frame_meta;
+    window.setSunAzimuth = (deg) => {
+        if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof globalGridObject.setSunAzimuth === 'function') {
+            globalGridObject.setSunAzimuth(deg);
+        }
+    };
 }
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { frame_meta, RETICLE_SYMBOLS, RETICLE_ANGLES, RETICLE_CLASSES };
