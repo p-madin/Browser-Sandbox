@@ -56,7 +56,40 @@ class BridgePlacer {
             }
         }
 
-        // 3. Synchronize passability graph across all bridges and shorelines
+        // 3. Invariant D Guarantee: Mandatory River Crossing Bridge
+        // Ensure that at least one engineered bridge spans across the primary river course connecting opposing banks
+        const isRiverSpan = (b) => b && b.deckCells && b.deckCells.some(c => c.hasFlag(CellFlags.WATER) || c.hasFlag(CellFlags.WATER_SHALLOW));
+        let riverBridgeCount = bridges.filter(isRiverSpan).length;
+
+        if (riverBridgeCount === 0 && typeof RiverGenerator !== 'undefined' && RiverGenerator.primaryRiverCourse && RiverGenerator.primaryRiverCourse.length > 0) {
+            console.log("[BridgePlacer] Invariant D: No trail crossed the river. Constructing mandatory primary river bridge span...");
+            const course = RiverGenerator.primaryRiverCourse;
+            const mid = Math.floor(course.length / 2);
+            const searchLimit = Math.floor(course.length * 0.45);
+
+            for (let offset = 0; offset <= searchLimit; offset += 3) {
+                let placed = false;
+                for (const sign of [1, -1]) {
+                    const idx = mid + offset * sign;
+                    if (idx < 0 || idx >= course.length) continue;
+                    const pt = course[idx];
+                    const cell = map.map_cells[pt.x] && map.map_cells[pt.x][pt.y];
+                    if (cell && (cell.hasFlag(CellFlags.WATER) || cell.hasFlag(CellFlags.WATER_SHALLOW))) {
+                        const span = this.spanFullCrossing(map, cell, processedCoords);
+                        if (span && span.deckCells && span.deckCells.length > 0) {
+                            bridges.push(span);
+                            allModifiedCells.push(...span.deckCells, ...span.railCells, ...span.abutmentCells);
+                            console.log(`[BridgePlacer] Placed mandatory river crossing bridge at (${pt.x}, ${pt.y}) with ${span.deckCells.length} deck cells.`);
+                            placed = true;
+                            break;
+                        }
+                    }
+                }
+                if (placed) break;
+            }
+        }
+
+        // 4. Synchronize passability graph across all bridges and shorelines
         this.recalculateCrossingPassability(map, allModifiedCells);
 
         console.log(`[BridgePlacer] Engineered ${bridges.length} full-span bridges across waterways and chasms.`);
@@ -278,4 +311,7 @@ class BridgePlacer {
 // Global export
 if (typeof window !== 'undefined') {
     window.BridgePlacer = BridgePlacer;
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { BridgePlacer };
 }

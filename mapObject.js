@@ -171,12 +171,20 @@ class mapObject {
             // Exclude high elevation (mountains)
             if (c.elevation !== undefined && c.elevation >= 2) return false;
             // Exclude all structural features
-            const structMask = CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_FLOOR | 
-                               CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED | 
-                               CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE | 
-                               CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH |
-                               CellFlagsRef.STRUCTURE_FIXTURE | CellFlagsRef.BLOCKED;
+            const structMask = CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_FLOOR |
+                CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED |
+                CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE |
+                CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH |
+            CellFlagsRef.STRUCTURE_FIXTURE | CellFlagsRef.STRUCTURE_ROOF | CellFlagsRef.BLOCKED;
             if ((flags & structMask) !== 0) return false;
+            // Invariant A: Strict 8-way chasm exclusion - sand must never touch chasm
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nc = this.map_cells[c.my_x + dx] && this.map_cells[c.my_x + dx][c.my_y + dy];
+                    if (nc && (nc.flags & CellFlagsRef.CHASM) !== 0) return false;
+                }
+            }
             return true;
         };
 

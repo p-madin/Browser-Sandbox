@@ -42,44 +42,80 @@ class AgentBridge {
     /**
      * Teleports to a named macro-geomorphic biome location.
      * @param {"spawn"|"mountains"|"canyons"|"river"|"lake"} biome 
+     * @param {boolean} [ensureWalkable=true]
      */
-    static teleportBiome(biome) {
+    static teleportBiome(biome, ensureWalkable = true) {
+        let tx = 0, ty = 0;
         switch (biome.toLowerCase()) {
             case "spawn":
-                return this.teleport(0, 0);
+                tx = 0; ty = 0;
+                break;
 
             case "mountains":
                 if (typeof ElevationService !== 'undefined' && ElevationService.mountainRidges && ElevationService.mountainRidges.length > 0) {
                     const r = ElevationService.mountainRidges[0];
-                    return this.teleport(r.cx, r.cy);
+                    tx = r.cx; ty = r.cy;
+                } else {
+                    tx = -60; ty = -60;
                 }
-                return this.teleport(-60, -60);
+                break;
 
             case "canyons":
             case "canyon":
                 if (typeof CanyonGenerator !== 'undefined' && CanyonGenerator.faultLines && CanyonGenerator.faultLines.length > 0) {
                     const fl = CanyonGenerator.faultLines[0];
-                    return this.teleport(fl.start.x, fl.start.y);
+                    tx = fl.start.x; ty = fl.start.y;
+                } else {
+                    tx = 80; ty = 0;
                 }
-                return this.teleport(80, 0);
+                break;
 
             case "river":
                 if (typeof RiverGenerator !== 'undefined' && RiverGenerator.primaryRiverCourse && RiverGenerator.primaryRiverCourse.length > 0) {
                     const mid = RiverGenerator.primaryRiverCourse[Math.floor(RiverGenerator.primaryRiverCourse.length / 2)];
-                    return this.teleport(mid.x, mid.y);
+                    tx = mid.x; ty = mid.y;
+                } else {
+                    tx = 20; ty = 20;
                 }
-                return this.teleport(20, 20);
+                break;
 
             case "lake":
                 if (typeof RiverGenerator !== 'undefined' && RiverGenerator.lakeCenter) {
-                    return this.teleport(RiverGenerator.lakeCenter.x, RiverGenerator.lakeCenter.y);
+                    tx = RiverGenerator.lakeCenter.x; ty = RiverGenerator.lakeCenter.y;
+                } else {
+                    tx = 35; ty = 30;
                 }
-                return this.teleport(35, 30);
+                break;
 
             default:
                 console.warn(`[AgentBridge] Unknown biome: ${biome}`);
                 return false;
         }
+
+        if (ensureWalkable && typeof globalMapObject !== 'undefined' && globalMapObject.map_cells) {
+            const start = globalMapObject.map_cells[tx] && globalMapObject.map_cells[tx][ty];
+            if (!start || start.isBlockedType()) {
+                let found = null;
+                for (let r = 1; r <= 15 && !found; r++) {
+                    for (let dx = -r; dx <= r && !found; dx++) {
+                        for (let dy = -r; dy <= r && !found; dy++) {
+                            if (Math.abs(dx) === r || Math.abs(dy) === r) {
+                                const c = globalMapObject.map_cells[tx + dx] && globalMapObject.map_cells[tx + dx][ty + dy];
+                                if (c && !c.isBlockedType()) {
+                                    found = { x: tx + dx, y: ty + dy };
+                                }
+                            }
+                        }
+                    }
+                }
+                if (found) {
+                    tx = found.x;
+                    ty = found.y;
+                }
+            }
+        }
+
+        return this.teleport(tx, ty);
     }
 
     /**

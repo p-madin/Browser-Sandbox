@@ -80,6 +80,7 @@ class frame_meta {
     frame_size_width = 0;
     frame_size_height = 0;
     cell_size = 20;
+    pad = 2;
     cell_size_x = 0;
     cell_size_y = 0;
     grid_mid_x = 0;
@@ -120,7 +121,7 @@ class frame_meta {
         this.cell_size_y = Math.max(1, Math.floor(this.frame_size_height / this.cell_size));
         this.grid_mid_x = Math.floor(this.cell_size_x / 2);
         this.grid_mid_y = Math.floor(this.cell_size_y / 2);
-        var pad = 3;
+        var pad = this.pad;
         this.grid_mid_cell = (this.grid_mid_x + pad) * (this.cell_size_y + 2 * pad + 1) + (this.grid_mid_y + pad);
 
         if (i_agent.x == "unset") {
@@ -669,8 +670,8 @@ class frame_meta {
         this.all_cells = new Array();
         this.all_blocked_cells = new Array();
 
-        // 3-tile margin buffer on all sides to prevent edge clipping during wide blur and subpixel slide
-        var pad = 3;
+        // 2-tile margin buffer on all sides to prevent edge clipping during subpixel slide
+        var pad = this.pad;
         var frame_count = 0;
         for (var i = -pad; i <= this.cell_size_x + pad; i++) {
             var px = (i * this.cell_size) + "px";
@@ -734,7 +735,7 @@ class frame_meta {
         warm(this.tree_elements, this.features_layer, "#symbol_tree", 300, "cell_tree_feature");
         warm(this.flora_elements, this.features_layer, "#symbol_flora", 200, "cell_flora_feature");
         warm(this.roof_elements, this.roof_layer, "#symbol_tile", 100, "cell_roof timber occluded");
-        warm(this.reticle_elements, this.reticles_layer, "#symbol_reticle_edge", 850, "cell_reticle reticle_sand");
+        warm(this.reticle_elements, this.reticles_layer, "#symbol_reticle_edge", 600, "cell_reticle reticle_sand");
     }
 
     getFreePool(pool) {
@@ -958,7 +959,7 @@ class frame_meta {
         }
         var changedCount = 0;
 
-        var pad = 3;
+        var pad = this.pad;
         var frame_count = 0;
         var mapCells = globalMapObject.map_cells;
         for (var c = 0; c < this.all_cells.length; c++) {
