@@ -523,6 +523,30 @@ body>div.canvas_container {
     cursor: pointer;
 }
 
+/* ==========================================================================
+   Compositor Layer Decomposition (Roadmap 10 Phase 2)
+   Isolates 350k characters of static Marching Squares vector paths into an
+   independent GPU texture layer to eliminate Skia re-rasterization during motion.
+   ========================================================================== */
+#layer_static_terrain,
+#world_terrain_paths,
+
+#world_ramp_paths,
+#layer_shadows,
+#world_shadow_paths {
+    will-change: transform;
+    contain: strict;
+    pointer-events: none;
+}
+
+#layer_dynamic_structures {
+    pointer-events: none;
+}
+
+#layer_interactive_tiles {
+    /* Contains #tiles_layer and #reticles_layer */
+}
+
 /* Bridges, Structure Decks & Wall Layers (Visual Overlays - Pointer events pass through to #tiles_layer) */
 #bridges_layer,
 #bridges_layer *,
@@ -1327,132 +1351,114 @@ body>div.canvas_container {
     width: 110px;
 }
 
-/* Phase 4: Hydrological Kinematics (Coastline Tidal Waves, Pure Swells & Wading Ripples) */
+/* Phase 3 (Roadmap 10): Macro-Shoreline Compound Waves & Reticle Animation Decoupling */
 
-/* 1. Coastline Tidal Wave Keyframes */
-@keyframes tidal-wave-breathe {
 
-    0%,
-    100% {
-        transform: translateY(0px) scaleY(1);
-        opacity: 0.35;
-    }
-
-    45% {
-        transform: translateY(2.6px) scaleY(1.15);
-        opacity: 0.95;
-    }
-
-    70% {
-        transform: translateY(1.4px) scaleY(1.05);
-        opacity: 0.60;
-    }
-}
-
-@keyframes tidal-wave-breathe-opposing {
-
-    0%,
-    100% {
-        transform: translateY(0px) scaleY(1);
-        opacity: 0.35;
-    }
-
-    45% {
-        transform: translateY(-2.6px) scaleY(1.15);
-        opacity: 0.95;
-    }
-
-    70% {
-        transform: translateY(-1.4px) scaleY(1.05);
-        opacity: 0.60;
-    }
-}
-
-@keyframes tidal-corner-breathe {
-
-    0%,
-    100% {
-        transform: translate(0px, 0px) scale(0.96);
-        opacity: 0.35;
-    }
-
-    45% {
-        transform: translate(-2.0px, 2.0px) scale(1.08);
-        opacity: 0.95;
-    }
-
-    70% {
-        transform: translate(-1.1px, 1.1px) scale(1.03);
-        opacity: 0.60;
-    }
-}
-
-@keyframes tidal-u-breathe {
-
-    0%,
-    100% {
-        transform: scale(1.0);
-        opacity: 0.35;
-    }
-
-    45% {
-        transform: scale(0.82, 0.84);
-        opacity: 0.95;
-    }
-
-    70% {
-        transform: scale(0.91, 0.92);
-        opacity: 0.60;
-    }
-}
-
-@keyframes tidal-island-breathe {
-
-    0%,
-    100% {
-        transform: scale(1.0);
-        opacity: 0.35;
-    }
-
-    45% {
-        transform: scale(0.80);
-        opacity: 0.95;
-    }
-
-    70% {
-        transform: scale(0.90);
-        opacity: 0.60;
-    }
-}
-
+/* 1. Static Reticle Border Purification (Stripped of all @keyframes for zero re-rasterization) */
 .reticle_wave {
     fill: none;
-    stroke: rgba(255, 255, 255, 0.78);
-    stroke-width: 1.35px;
+    stroke: rgba(255, 255, 255, 0.35);
+    stroke-width: 1.0px;
     stroke-linecap: round;
     pointer-events: none;
+    animation: none !important;
 }
 
-.reticle_wave_edge {
-    animation: tidal-wave-breathe 2.8s ease-in-out infinite;
-}
 
-.reticle_wave_edge_opposing {
-    animation: tidal-wave-breathe-opposing 2.8s ease-in-out infinite;
-}
-
-.reticle_wave_corner {
-    animation: tidal-corner-breathe 2.8s ease-in-out infinite;
-}
-
-.reticle_wave_u {
-    transform-origin: 10px 20px;
-    animation: tidal-u-breathe 2.8s ease-in-out infinite;
-}
-
+.reticle_wave_edge,
+.reticle_wave_edge_opposing,
+.reticle_wave_corner,
+.reticle_wave_u,
 .reticle_wave_island {
-    transform-origin: 10px 10px;
-    animation: tidal-island-breathe 2.8s ease-in-out infinite;
+    animation: none !important;
+}
+
+
+/* 2. Unified Continuous Macro-Shoreline Compound Wave (Option A: Shoreline Margin & Dash Padding) */
+#world_wave_paths {
+    pointer-events: none;
+    will-change: transform;
+}
+
+.macro_shoreline_wave {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.52);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 4 6 12 8 8 6 16 9 7 15 6;
+    animation: macro-shore-breathe 30s infinite;
+    pointer-events: none;
+    will-change: stroke-width, opacity;
+    /* filter: blur(1px); */
+}
+
+@keyframes macro-shore-breathe {
+
+    0% {
+        opacity: 0.20;
+        stroke-width: 3px;
+    }
+
+    10% {
+        opacity: 0.42;
+        stroke-width: 15px;
+        animation-timing-function: ease-in;
+    }
+
+    20% {
+        opacity: 0.15;
+        stroke-width: 5px;
+        animation-timing-function: ease-in;
+    }
+
+    30% {
+        opacity: 0.42;
+        stroke-width: 13px;
+        animation-timing-function: ease-in;
+    }
+
+    40% {
+        opacity: 0.10;
+        stroke-width: 4px;
+        animation-timing-function: ease-in;
+    }
+
+    50% {
+        opacity: 0.42;
+        stroke-width: 10px;
+        animation-timing-function: ease-in;
+    }
+
+    60% {
+        opacity: 0.13;
+        stroke-width: 5px;
+        animation-timing-function: ease-in;
+    }
+
+    70% {
+        opacity: 0.42;
+        stroke-width: 12px;
+        animation-timing-function: ease-in;
+    }
+
+    80% {
+        opacity: 0.15;
+        stroke-width: 4px;
+        animation-timing-function: ease-in;
+    }
+
+    90% {
+        opacity: 0.42;
+        stroke-width: 14px;
+        animation-timing-function: ease-in;
+    }
+
+    100% {
+        opacity: 0.20;
+        stroke-width: 3px;
+        animation-timing-function: ease-in;
+    }
+
 }
 
 /* 2. Open Water Pure Wave Swells */

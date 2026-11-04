@@ -292,10 +292,10 @@ class TerrainPathService {
 
         function makeFoam(fx, fy, r) {
             return `M ${(fx - r).toFixed(1)} ${fy.toFixed(1)} ` +
-                   `Q ${(fx - r * 0.7).toFixed(1)} ${(fy - r * 0.7).toFixed(1)} ${fx.toFixed(1)} ${(fy - r).toFixed(1)} ` +
-                   `Q ${(fx + r * 0.7).toFixed(1)} ${(fy - r * 0.7).toFixed(1)} ${(fx + r).toFixed(1)} ${fy.toFixed(1)} ` +
-                   `Q ${(fx + r * 0.7).toFixed(1)} ${(fy + r * 0.7).toFixed(1)} ${fx.toFixed(1)} ${(fy + r).toFixed(1)} ` +
-                   `Q ${(fx - r * 0.7).toFixed(1)} ${(fy + r * 0.7).toFixed(1)} ${(fx - r).toFixed(1)} ${fy.toFixed(1)} Z `;
+                `Q ${(fx - r * 0.7).toFixed(1)} ${(fy - r * 0.7).toFixed(1)} ${fx.toFixed(1)} ${(fy - r).toFixed(1)} ` +
+                `Q ${(fx + r * 0.7).toFixed(1)} ${(fy - r * 0.7).toFixed(1)} ${(fx + r).toFixed(1)} ${fy.toFixed(1)} ` +
+                `Q ${(fx + r * 0.7).toFixed(1)} ${(fy + r * 0.7).toFixed(1)} ${fx.toFixed(1)} ${(fy + r).toFixed(1)} ` +
+                `Q ${(fx - r * 0.7).toFixed(1)} ${(fy + r * 0.7).toFixed(1)} ${(fx - r).toFixed(1)} ${fy.toFixed(1)} Z `;
         }
 
         function makeClover(cx, cy, scale, rot) {
@@ -307,10 +307,10 @@ class TerrainPathService {
                 const ly = cy + Math.sin(angle) * dist;
                 const r = scale * 2.0;
                 s += `M ${(lx - r).toFixed(1)} ${ly.toFixed(1)} ` +
-                     `Q ${(lx - r).toFixed(1)} ${(ly - r).toFixed(1)} ${lx.toFixed(1)} ${(ly - r).toFixed(1)} ` +
-                     `Q ${(lx + r).toFixed(1)} ${(ly - r).toFixed(1)} ${(lx + r).toFixed(1)} ${ly.toFixed(1)} ` +
-                     `Q ${(lx + r).toFixed(1)} ${(ly + r).toFixed(1)} ${lx.toFixed(1)} ${(ly + r).toFixed(1)} ` +
-                     `Q ${(lx - r).toFixed(1)} ${(ly + r).toFixed(1)} ${(lx - r).toFixed(1)} ${ly.toFixed(1)} Z `;
+                    `Q ${(lx - r).toFixed(1)} ${(ly - r).toFixed(1)} ${lx.toFixed(1)} ${(ly - r).toFixed(1)} ` +
+                    `Q ${(lx + r).toFixed(1)} ${(ly - r).toFixed(1)} ${(lx + r).toFixed(1)} ${ly.toFixed(1)} ` +
+                    `Q ${(lx + r).toFixed(1)} ${(ly + r).toFixed(1)} ${lx.toFixed(1)} ${(ly + r).toFixed(1)} ` +
+                    `Q ${(lx - r).toFixed(1)} ${(ly + r).toFixed(1)} ${(lx - r).toFixed(1)} ${ly.toFixed(1)} Z `;
             }
             return s;
         }
@@ -616,6 +616,28 @@ class TerrainPathService {
         return d;
     }
 
+    /**
+     * Phase 3: Macro-Shoreline Compound Waves & Reticle Animation Decoupling
+     * Detects continuous closed polylines representing land-water shoreline boundaries and offsets
+     * slightly into water bodies to generate a unified compound SVG wave path.
+     * @param {Float32Array|Object} [bWaterOrMap] 
+     * @returns {string} SVG path 'd' string
+     */
+    generateShorelineWavePath(bWaterOrMap = this.map) {
+        let bWater;
+        if (bWaterOrMap instanceof Float32Array) {
+            bWater = bWaterOrMap;
+        } else {
+            const targetMap = bWaterOrMap || this.map;
+            const CellFlagsRef = (typeof CellFlags !== 'undefined') ? CellFlags : (typeof require !== 'undefined' ? require('./cell.js').CellFlags : {});
+            const hasStrictBuilding = (c) => (c.flags & (CellFlagsRef.STRUCTURE_FLOOR | CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED | CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE | CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH)) !== 0;
+            const fWater = this.createScalarField(c => (c.flags & CellFlagsRef.WATER) !== 0 && !hasStrictBuilding(c));
+            bWater = this.gaussianBlur(fWater);
+        }
+        // Option A: Extract shoreline wave contour with uniform 1.5px water margin off the shore boundary (tau = 0.545, jitter = 0.35)
+        return this.extractPath(bWater, 0.75, 0.05);
+    }
+
     generateAllPathData() {
         const CellFlagsRef = (typeof CellFlags !== 'undefined') ? CellFlags : (typeof require !== 'undefined' ? require('./cell.js').CellFlags : {});
         const hasStrictBuilding = (c) => (c.flags & (CellFlagsRef.STRUCTURE_FLOOR | CellFlagsRef.STRUCTURE_WALL | CellFlagsRef.STRUCTURE_DOOR | CellFlagsRef.STRUCTURE_DOOR_CLOSED | CellFlagsRef.STRUCTURE_DOOR_OPEN | CellFlagsRef.STRUCTURE_BRIDGE | CellFlagsRef.STRUCTURE_BARRICADE | CellFlagsRef.STRUCTURE_PATH)) !== 0;
@@ -655,6 +677,7 @@ class TerrainPathService {
         const bWater = this.gaussianBlur(fWater);
         const resWaterCore = this.extractPath(bWater, 0.50, 0, true);
         const resWaterFringe = this.extractPath(bWater, 0.25, 0, true);
+        const dShorelineWaves = this.generateShorelineWavePath(bWater);
 
         // 6b. Shallow Water (Fords)
         const fShallow = this.createScalarField(c => (c.flags & CellFlagsRef.WATER_SHALLOW) !== 0 && !hasStrictBuilding(c));
@@ -722,6 +745,7 @@ class TerrainPathService {
             water_fringe: resWaterFringe.pathD,
             water: resWaterCore.pathD,
             water_shallow: dShallow,
+            shoreline_waves: dShorelineWaves,
             ramp: dRamp,
             scatter_pebbles: detritus.scatter_pebbles,
             scatter_foam: detritus.scatter_foam,
@@ -822,33 +846,6 @@ class TerrainPathService {
             this.pathElements[sdef.key] = p;
         }
 
-        // Insert container right after background grid, before tiles_layer
-        if (gridObject.tiles_layer && gridObject.tiles_layer.parentNode === gridObject.world_viewport) {
-            gridObject.world_viewport.insertBefore(this.container, gridObject.tiles_layer);
-        } else {
-            gridObject.world_viewport.appendChild(this.container);
-        }
-
-        // Insert rampContainer right after reticles_layer
-        if (this.rampContainer.parentNode !== gridObject.world_viewport) {
-            if (gridObject.bridges_layer && gridObject.bridges_layer.parentNode === gridObject.world_viewport) {
-                gridObject.world_viewport.insertBefore(this.rampContainer, gridObject.bridges_layer);
-            } else if (gridObject.reticles_layer && gridObject.reticles_layer.parentNode === gridObject.world_viewport) {
-                gridObject.reticles_layer.after(this.rampContainer);
-            } else {
-                gridObject.world_viewport.appendChild(this.rampContainer);
-            }
-        }
-
-        // Insert scatterContainer right after rampContainer (before bridges_layer)
-        if (this.scatterContainer.parentNode !== gridObject.world_viewport) {
-            if (gridObject.bridges_layer && gridObject.bridges_layer.parentNode === gridObject.world_viewport) {
-                gridObject.world_viewport.insertBefore(this.scatterContainer, gridObject.bridges_layer);
-            } else {
-                gridObject.world_viewport.appendChild(this.scatterContainer);
-            }
-        }
-
         // Mount directional object shadow container (Layer 2e, between bridges_layer and structures_layer)
         this.shadowContainer = gridObject.shadow_layer || createSvg("g");
         if (!gridObject.shadow_layer) {
@@ -874,18 +871,90 @@ class TerrainPathService {
         this.shadowContainer.appendChild(pTreeShadow);
         this.pathElements["tree_shadows"] = pTreeShadow;
 
-        // Insert shadowContainer right after bridges_layer (before structures_layer or features_layer)
-        if (this.shadowContainer.parentNode !== gridObject.world_viewport) {
-            if (gridObject.structures_layer && gridObject.structures_layer.parentNode === gridObject.world_viewport) {
-                gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.structures_layer);
-            } else if (gridObject.features_layer && gridObject.features_layer.parentNode === gridObject.world_viewport) {
-                gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.features_layer);
+        // Phase 3 (Roadmap 10): Mount continuous macro-shoreline wave container (in layer_interactive_tiles above reticles)
+        this.waveContainer = gridObject.wave_layer || createSvg("g");
+        if (!gridObject.wave_layer) {
+            this.waveContainer.setAttribute("id", "world_wave_paths");
+            this.waveContainer.style.pointerEvents = "none";
+        }
+
+        const pWave = createSvg("path");
+        pWave.setAttribute("id", "path_shoreline_waves");
+        pWave.setAttribute("class", "terrain_wave macro_shoreline_wave");
+        const dWave = pathData.shoreline_waves || "";
+        pWave.setAttribute("d", dWave);
+        pWave.style.display = dWave.length > 0 ? "block" : "none";
+        this.waveContainer.appendChild(pWave);
+        this.pathElements["shoreline_waves"] = pWave;
+
+        // Compositor Layer Decomposition (Roadmap 10 Phase 2 & 3):
+        // Mount terrain fills, ramps, and scatter into layer_static_terrain (beneath tiles/reticles)
+        // Mount shoreline wave container into layer_interactive_tiles (above reticles, beneath player effects)
+        // Mount directional shadows into layer_shadows (in front of reticles, beneath structures)
+        if (gridObject.layer_static_terrain) {
+            gridObject.layer_static_terrain.appendChild(this.container);
+            gridObject.layer_static_terrain.appendChild(this.rampContainer);
+            gridObject.layer_static_terrain.appendChild(this.scatterContainer);
+            if (gridObject.layer_interactive_tiles) {
+                if (gridObject.player_effects_layer && gridObject.player_effects_layer.parentNode === gridObject.layer_interactive_tiles) {
+                    gridObject.layer_interactive_tiles.insertBefore(this.waveContainer, gridObject.player_effects_layer);
+                } else {
+                    gridObject.layer_interactive_tiles.appendChild(this.waveContainer);
+                }
             } else {
-                gridObject.world_viewport.appendChild(this.shadowContainer);
+                gridObject.layer_static_terrain.appendChild(this.waveContainer);
+            }
+            if (gridObject.layer_shadows) {
+                gridObject.layer_shadows.appendChild(this.shadowContainer);
+            } else {
+                gridObject.layer_static_terrain.appendChild(this.shadowContainer);
+            }
+        } else {
+            // Legacy un-decomposed fallback
+            if (gridObject.tiles_layer && gridObject.tiles_layer.parentNode === gridObject.world_viewport) {
+                gridObject.world_viewport.insertBefore(this.container, gridObject.tiles_layer);
+            } else {
+                gridObject.world_viewport.appendChild(this.container);
+            }
+
+            if (this.rampContainer.parentNode !== gridObject.world_viewport) {
+                if (gridObject.bridges_layer && gridObject.bridges_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.world_viewport.insertBefore(this.rampContainer, gridObject.bridges_layer);
+                } else if (gridObject.reticles_layer && gridObject.reticles_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.reticles_layer.after(this.rampContainer);
+                } else {
+                    gridObject.world_viewport.appendChild(this.rampContainer);
+                }
+            }
+
+            if (this.scatterContainer.parentNode !== gridObject.world_viewport) {
+                if (gridObject.bridges_layer && gridObject.bridges_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.world_viewport.insertBefore(this.scatterContainer, gridObject.bridges_layer);
+                } else {
+                    gridObject.world_viewport.appendChild(this.scatterContainer);
+                }
+            }
+
+            if (this.waveContainer.parentNode !== gridObject.world_viewport) {
+                if (gridObject.reticles_layer && gridObject.reticles_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.reticles_layer.after(this.waveContainer);
+                } else {
+                    gridObject.world_viewport.appendChild(this.waveContainer);
+                }
+            }
+
+            if (this.shadowContainer.parentNode !== gridObject.world_viewport) {
+                if (gridObject.structures_layer && gridObject.structures_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.structures_layer);
+                } else if (gridObject.features_layer && gridObject.features_layer.parentNode === gridObject.world_viewport) {
+                    gridObject.world_viewport.insertBefore(this.shadowContainer, gridObject.features_layer);
+                } else {
+                    gridObject.world_viewport.appendChild(this.shadowContainer);
+                }
             }
         }
 
-        console.log("[TerrainPathService] Mounted 14 terrain paths, 1 ramp, 5 scatter paths, and 2 directional object shadow paths.");
+        console.log("[TerrainPathService] Mounted 14 terrain paths, 1 ramp, 5 scatter paths, 1 continuous wave path, and 2 directional object shadow paths.");
     }
 
     updateViewport(gridObject, vector_horizontal, vector_vertical) {
@@ -900,6 +969,9 @@ class TerrainPathService {
             }
             if (this.scatterContainer) {
                 this.scatterContainer.setAttribute("transform", tf);
+            }
+            if (this.waveContainer) {
+                this.waveContainer.setAttribute("transform", tf);
             }
             if (this.shadowContainer) {
                 this.shadowContainer.setAttribute("transform", tf);
@@ -971,7 +1043,7 @@ class TerrainPathService {
             p.setAttribute("d", d);
             p.style.display = d.length > 0 ? "block" : "none";
         }
-        console.log("[TerrainPathService] Rebuilt all 22 vector landmark, relief, ecotone, and shadow paths.");
+        console.log("[TerrainPathService] Rebuilt all 23 vector landmark, relief, ecotone, wave, and shadow paths.");
     }
 }
 

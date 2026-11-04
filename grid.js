@@ -65,6 +65,8 @@ class frame_meta {
     curves_layer;
     ramp_layer;
     scatter_layer;
+    shadow_layer;
+    wave_layer;
     bridges_layer;
     structures_layer;
     features_layer;
@@ -526,6 +528,14 @@ class frame_meta {
         this.world_viewport.style.willChange = "transform";
         this.frame_element.appendChild(this.world_viewport);
 
+        // Sub-Layer 1: Static Terrain Layer (promoted to isolated hardware layer, 350k vector chars)
+        this.layer_static_terrain = create_svg_element("g");
+        this.layer_static_terrain.setAttribute("id", "layer_static_terrain");
+        this.layer_static_terrain.style.willChange = "transform";
+        this.layer_static_terrain.style.contain = "strict";
+        this.layer_static_terrain.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.layer_static_terrain);
+
         // Layer 0: Background grid pattern rect
         this.bg_layer = create_svg_element("g");
         this.bg_layer.setAttribute("id", "bg_layer");
@@ -537,7 +547,12 @@ class frame_meta {
         bgGridRect.setAttribute("fill", "url(#symbol_grid_pattern)");
         bgGridRect.style.pointerEvents = "none";
         this.bg_layer.appendChild(bgGridRect);
-        this.world_viewport.appendChild(this.bg_layer);
+        this.layer_static_terrain.appendChild(this.bg_layer);
+
+        // Sub-Layer 2: Interactive Tiles & Reticles Layer
+        this.layer_interactive_tiles = create_svg_element("g");
+        this.layer_interactive_tiles.setAttribute("id", "layer_interactive_tiles");
+        this.world_viewport.appendChild(this.layer_interactive_tiles);
 
         // Layer 2: Tiles layer for cell element click detection & interactive overlays (.path_step, .selectedDestination)
         this.tiles_layer = create_svg_element("g");
@@ -550,31 +565,19 @@ class frame_meta {
         };
         this.tiles_layer.addEventListener("click", onViewportClick);
         this.world_viewport.addEventListener("click", onViewportClick);
-        this.world_viewport.appendChild(this.tiles_layer);
+        this.layer_interactive_tiles.appendChild(this.tiles_layer);
 
         // Layer 2b: Reticles layer for directional ecotone cell borders (Architecture 1)
         this.reticles_layer = create_svg_element("g");
         this.reticles_layer.setAttribute("id", "reticles_layer");
         this.reticles_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.reticles_layer);
-
-        // Layer 2c: Dedicated Ramp Paths layer (overlaps all other terrain and reticles)
-        this.ramp_layer = create_svg_element("g");
-        this.ramp_layer.setAttribute("id", "world_ramp_paths");
-        this.ramp_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.ramp_layer);
-
-        // Layer 2d: Dedicated Boundary Micro-Scatter Layer (Pebbles, Foam, Clovers, Wildflowers, Scree)
-        this.scatter_layer = create_svg_element("g");
-        this.scatter_layer.setAttribute("id", "scatter_layer");
-        this.scatter_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.scatter_layer);
+        this.layer_interactive_tiles.appendChild(this.reticles_layer);
 
         // Layer 2f: Dedicated Player Kinematic Effects Layer (Wading ripples, footprints, dust puffs)
         this.player_effects_layer = create_svg_element("g");
         this.player_effects_layer.setAttribute("id", "player_effects_layer");
         this.player_effects_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.player_effects_layer);
+        this.layer_interactive_tiles.appendChild(this.player_effects_layer);
 
         // Pre-warm 8 kinematic effect instances (container <g> with inner <use>)
         this.effect_elements = new Array(8);
@@ -595,17 +598,44 @@ class frame_meta {
             this.effect_elements[ep] = g;
         }
 
+        // Sub-Layer 2.5: Directional Shadows Layer (Renders in front of terrain & reticles, beneath structures)
+        this.layer_shadows = create_svg_element("g");
+        this.layer_shadows.setAttribute("id", "layer_shadows");
+        this.layer_shadows.style.willChange = "transform";
+        this.layer_shadows.style.contain = "strict";
+        this.layer_shadows.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.layer_shadows);
+
+        // Sub-Layer 3: Dynamic Structures & Features Layer
+        this.layer_dynamic_structures = create_svg_element("g");
+        this.layer_dynamic_structures.setAttribute("id", "layer_dynamic_structures");
+        this.layer_dynamic_structures.style.pointerEvents = "none";
+        this.world_viewport.appendChild(this.layer_dynamic_structures);
+
         // Layer 3: Bridges layer (Engineered bridges, paths, and floors cleanly span over contours)
         this.bridges_layer = create_svg_element("g");
         this.bridges_layer.setAttribute("id", "bridges_layer");
         this.bridges_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.bridges_layer);
+        this.layer_dynamic_structures.appendChild(this.bridges_layer);
 
         // Layer 3b: Vertical structures layer (Walls, doors, barricades, fixtures)
         this.structures_layer = create_svg_element("g");
         this.structures_layer.setAttribute("id", "structures_layer");
         this.structures_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.structures_layer);
+        this.layer_dynamic_structures.appendChild(this.structures_layer);
+
+        // Layer 2c & 2d: Setup static terrain path containers
+        this.ramp_layer = create_svg_element("g");
+        this.ramp_layer.setAttribute("id", "world_ramp_paths");
+        this.ramp_layer.style.pointerEvents = "none";
+
+        this.scatter_layer = create_svg_element("g");
+        this.scatter_layer.setAttribute("id", "scatter_layer");
+        this.scatter_layer.style.pointerEvents = "none";
+
+        this.shadow_layer = create_svg_element("g");
+        this.shadow_layer.setAttribute("id", "world_shadow_paths");
+        this.shadow_layer.style.pointerEvents = "none";
 
         // Layer 1: Vector Terrain Landmark Paths (Phase 6)
         if (typeof TerrainPathService !== 'undefined' && typeof globalMapObject !== 'undefined' && globalMapObject) {
@@ -617,7 +647,7 @@ class frame_meta {
         this.features_layer = create_svg_element("g");
         this.features_layer.setAttribute("id", "features_layer");
         this.features_layer.style.pointerEvents = "none";
-        this.world_viewport.appendChild(this.features_layer);
+        this.layer_dynamic_structures.appendChild(this.features_layer);
 
         // Layer 2: Player layer for avatar
         this.player_layer = create_svg_element("g");
