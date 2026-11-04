@@ -72,12 +72,15 @@
                 <button id="structure_stamp_random_btn" class="structure_btn">🎲 Random</button>
             </div>
             <div class="structure_button_row">
-                <button id="structure_generate_bsp_btn" class="structure_btn" style="background: #1e3a8a; border-color: #3b82f6;">🏰 Generate BSP Dungeon</button>
+                <button id="structure_generate_bsp_btn" class="structure_btn"
+                    style="background: #1e3a8a; border-color: #3b82f6;">🏰 Generate BSP Dungeon</button>
             </div>
             <div class="structure_button_row">
                 <button id="view_spawn_btn" class="structure_btn">📍 Spawn</button>
-                <button id="view_mountains_btn" class="structure_btn" style="background: #14532d; border-color: #22c55e;">🏔️ Mountains</button>
-                <button id="view_canyon_btn" class="structure_btn" style="background: #451a03; border-color: #f97316;">峡 Canyon</button>
+                <button id="view_mountains_btn" class="structure_btn"
+                    style="background: #14532d; border-color: #22c55e;">🏔️ Mountains</button>
+                <button id="view_canyon_btn" class="structure_btn" style="background: #451a03; border-color: #f97316;">峡
+                    Canyon</button>
             </div>
             <div id="structure_status" class="structure_status">Ready to stamp</div>
         </div>
@@ -113,9 +116,27 @@
                 </div>
                 <div class="benchmark_button_row">
                     <button id="benchmark_run_btn" class="benchmark_btn primary">▶ Run Suite</button>
-                    <button id="benchmark_walk_btn" class="benchmark_btn" style="background: #0284c7; border-color: #38bdf8;">🏃 Walk Benchmark (Jitter)</button>
+                    <button id="benchmark_walk_btn" class="benchmark_btn"
+                        style="background: #0284c7; border-color: #38bdf8;">🏃 Walk Benchmark (Jitter)</button>
                     <button id="benchmark_copy_btn" class="benchmark_btn">📋 Copy Report</button>
                     <button id="benchmark_export_btn" class="benchmark_btn">💾 JSON</button>
+                </div>
+                <div class="benchmark_control_group" style="margin-top: 8px;">
+                    <label for="benchmark_phase_select">Roadmap 10/11 Phase</label>
+                    <select id="benchmark_phase_select">
+                        <option value="Baseline" selected>Phase 1: Baseline (Pre-Opt SVG)</option>
+                        <option value="Phase 2">Phase 2: Layer Decomposition</option>
+                        <option value="Phase 3">Phase 3: Macro Shore Waves</option>
+                        <option value="Phase 4">Phase 4: Swell Culling</option>
+                        <option value="Phase 5">Phase 5: Frontier Diffing</option>
+                        <option value="Phase 6">Phase 6: Multi-Biome Certification</option>
+                        <option value="Canvas R11">Roadmap 11: Canvas 2D Migration</option>
+                    </select>
+                </div>
+                <div class="benchmark_button_row">
+                    <button id="benchmark_phase_btn" class="benchmark_btn"
+                        style="background: #059669; border-color: #10b981;">📊 Record Phase Benchmark</button>
+                    <button id="benchmark_copy_markdown_btn" class="benchmark_btn">📑 Copy Markdown</button>
                 </div>
             </div>
 
