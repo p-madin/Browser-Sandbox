@@ -137,7 +137,9 @@ class agent_meta {
         var duration = isDiagonal ? baseStepTime * 1.414 : baseStepTime;
         var startTime = null;
 
-        globalGridObject.updateGrid(self, false);
+        if (globalGridObject && globalGridObject.interactive) {
+            globalGridObject.setInteractive(false);
+        }
 
         function animateFrame(timestamp) {
             if (!startTime) startTime = timestamp;
@@ -153,8 +155,10 @@ class agent_meta {
             } else {
                 globalGridObject.setViewportShift(0, 0);
 
-                vector_horizontal = vector_horizontal + self.x - to_meta.my_x;
-                vector_vertical = vector_vertical + self.y - to_meta.my_y;
+                var stepDx = to_meta.my_x - self.x;
+                var stepDy = to_meta.my_y - self.y;
+                vector_horizontal = vector_horizontal - stepDx;
+                vector_vertical = vector_vertical - stepDy;
                 self.x = to_meta.my_x;
                 self.y = to_meta.my_y;
                 self.agentCellOccupied = to_meta;
@@ -174,7 +178,7 @@ class agent_meta {
                         globalMapObject.map_cells[targetCellMeta.my_x][targetCellMeta.my_y].removeFlag(CellFlags.SELECTED);
                     }
                     self.destinationCell = null;
-                    globalGridObject.updateGrid(self, true);
+                    globalGridObject.updateGrid(self, true, stepDx, stepDy);
                     if (typeof self.onWalkComplete === 'function') {
                         var cb = self.onWalkComplete;
                         self.onWalkComplete = null;
@@ -184,6 +188,7 @@ class agent_meta {
                 }
 
                 i_path.splice(0, 1);
+                globalGridObject.updateGrid(self, false, stepDx, stepDy);
                 self.walkPath(i_path);
             }
         }

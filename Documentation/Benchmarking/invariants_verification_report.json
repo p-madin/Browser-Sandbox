@@ -1,0 +1,54 @@
+{
+  "42": {
+    "seed": 42,
+    "totalCells": 40000,
+    "waterCells": 796,
+    "shallowWaterCells": 50,
+    "cliffCells": 4995,
+    "chasmCells": 251,
+    "bridgeCells": 12,
+    "pathCells": 49,
+    "invariantA_Violations": 0,
+    "invariantB_Violations": 0,
+    "deterministicLayoutHash": 1239048486
+  },
+  "12345": {
+    "seed": 12345,
+    "totalCells": 40000,
+    "waterCells": 1117,
+    "shallowWaterCells": 69,
+    "cliffCells": 2964,
+    "chasmCells": 173,
+    "bridgeCells": 15,
+    "pathCells": 184,
+    "invariantA_Violations": 0,
+    "invariantB_Violations": 0,
+    "deterministicLayoutHash": 443393935
+  },
+  "88888": {
+    "seed": 88888,
+    "totalCells": 40000,
+    "waterCells": 978,
+    "shallowWaterCells": 53,
+    "cliffCells": 3806,
+    "chasmCells": 218,
+    "bridgeCells": 16,
+    "pathCells": 101,
+    "invariantA_Violations": 0,
+    "invariantB_Violations": 0,
+    "deterministicLayoutHash": 276181356
+  },
+  "99999": {
+    "seed": 99999,
+    "totalCells": 40000,
+    "waterCells": 1084,
+    "shallowWaterCells": 59,
+    "cliffCells": 5110,
+    "chasmCells": 217,
+    "bridgeCells": 12,
+    "pathCells": 119,
+    "invariantA_Violations": 0,
+    "invariantB_Violations": 0,
+    "deterministicLayoutHash": -1933471375
+  }
+}

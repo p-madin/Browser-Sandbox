@@ -1473,30 +1473,50 @@ body>div.canvas_container {
     }
 
     45% {
-        opacity: 0.85;
+        opacity: 0.32;
         transform: translateY(-1.5px) scale(1.05);
     }
 
     60% {
-        opacity: 0.35;
+        opacity: 0.09;
         transform: translateY(-2.8px) scale(1.2);
     }
 }
 
 .cell_pure_wave {
     pointer-events: none;
+    stroke: rgba(255, 255, 255, 0.72);
+}
+
+.cell_pure_wave.pure_wave_shallow {
+    stroke: rgba(255, 255, 255, 0.85);
 }
 
 .pure_wave {
     fill: none;
-    stroke: rgba(255, 255, 255, 0.72);
-    stroke-width: 1.3px;
+    stroke: inherit;
+    stroke-width: 10px;
     stroke-linecap: round;
     animation: pure-wave-swell 7.0s ease-in-out infinite;
+    will-change: transform, opacity;
+    filter: blur(1px);
 }
 
-.pure_wave_shallow .pure_wave {
-    stroke: rgba(255, 255, 255, 0.85);
+
+.pure_wave_phase_0 {
+    animation-delay: 0.0s;
+}
+
+.pure_wave_phase_1 {
+    animation-delay: -1.75s;
+}
+
+.pure_wave_phase_2 {
+    animation-delay: -3.50s;
+}
+
+.pure_wave_phase_3 {
+    animation-delay: -5.25s;
 }
 
 /* 3. Player Step Kinematic Micro-Interactions */

@@ -1,0 +1,182 @@
+{
+  "spawn": {
+    "totalSvgElements": 7199,
+    "useElementsCount": 1771,
+    "pathElementsCount": 55,
+    "groupElementsCount": 51,
+    "defsSymbolCount": 36,
+    "totalPathLengthChars": 626782,
+    "activeAnimatingSwells": 4,
+    "activeAnimatedFoamPaths": 0,
+    "layers": {
+      "world_viewport": {
+        "children": 4,
+        "willChange": "transform",
+        "display": "inline"
+      },
+      "player_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      },
+      "roof_layer": {
+        "children": 100,
+        "willChange": "transform",
+        "display": "block"
+      },
+      "ambient_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      }
+    },
+    "memory": {
+      "usedJSHeapSizeMB": 60.21,
+      "totalJSHeapSizeMB": 127.17
+    }
+  },
+  "mountains": {
+    "totalSvgElements": 7199,
+    "useElementsCount": 1771,
+    "pathElementsCount": 55,
+    "groupElementsCount": 51,
+    "defsSymbolCount": 36,
+    "totalPathLengthChars": 626782,
+    "activeAnimatingSwells": 4,
+    "activeAnimatedFoamPaths": 0,
+    "layers": {
+      "world_viewport": {
+        "children": 4,
+        "willChange": "transform",
+        "display": "inline"
+      },
+      "player_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      },
+      "roof_layer": {
+        "children": 100,
+        "willChange": "transform",
+        "display": "block"
+      },
+      "ambient_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      }
+    },
+    "memory": {
+      "usedJSHeapSizeMB": 60.22,
+      "totalJSHeapSizeMB": 127.17
+    }
+  },
+  "river": {
+    "totalSvgElements": 7199,
+    "useElementsCount": 1771,
+    "pathElementsCount": 55,
+    "groupElementsCount": 51,
+    "defsSymbolCount": 36,
+    "totalPathLengthChars": 626782,
+    "activeAnimatingSwells": 4,
+    "activeAnimatedFoamPaths": 0,
+    "layers": {
+      "world_viewport": {
+        "children": 4,
+        "willChange": "transform",
+        "display": "inline"
+      },
+      "player_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      },
+      "roof_layer": {
+        "children": 100,
+        "willChange": "transform",
+        "display": "block"
+      },
+      "ambient_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      }
+    },
+    "memory": {
+      "usedJSHeapSizeMB": 60.23,
+      "totalJSHeapSizeMB": 127.17
+    }
+  },
+  "canyons": {
+    "totalSvgElements": 7199,
+    "useElementsCount": 1771,
+    "pathElementsCount": 55,
+    "groupElementsCount": 51,
+    "defsSymbolCount": 36,
+    "totalPathLengthChars": 626782,
+    "activeAnimatingSwells": 4,
+    "activeAnimatedFoamPaths": 0,
+    "layers": {
+      "world_viewport": {
+        "children": 4,
+        "willChange": "transform",
+        "display": "inline"
+      },
+      "player_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      },
+      "roof_layer": {
+        "children": 100,
+        "willChange": "transform",
+        "display": "block"
+      },
+      "ambient_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      }
+    },
+    "memory": {
+      "usedJSHeapSizeMB": 60.24,
+      "totalJSHeapSizeMB": 127.17
+    }
+  },
+  "lake": {
+    "totalSvgElements": 7199,
+    "useElementsCount": 1771,
+    "pathElementsCount": 55,
+    "groupElementsCount": 51,
+    "defsSymbolCount": 36,
+    "totalPathLengthChars": 626782,
+    "activeAnimatingSwells": 4,
+    "activeAnimatedFoamPaths": 0,
+    "layers": {
+      "world_viewport": {
+        "children": 4,
+        "willChange": "transform",
+        "display": "inline"
+      },
+      "player_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      },
+      "roof_layer": {
+        "children": 100,
+        "willChange": "transform",
+        "display": "block"
+      },
+      "ambient_layer": {
+        "children": 1,
+        "willChange": "auto",
+        "display": "inline"
+      }
+    },
+    "memory": {
+      "usedJSHeapSizeMB": 60.25,
+      "totalJSHeapSizeMB": 127.17
+    }
+  }
+}

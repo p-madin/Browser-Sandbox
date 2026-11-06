@@ -16,10 +16,10 @@ var seed_c = seedgen();
 var seed_d = seedgen();
 
 // Root map seeds (SFC32 PRNG seed vector)
-var seed_a = 4270865943;
-var seed_b = 3540297175;
-var seed_c = 1158276817;
-var seed_d = 265803571;
+// var seed_a = 4270865943;
+// var seed_b = 3540297175;
+// var seed_c = 1158276817;
+// var seed_d = 265803571;
 var getRand = sfc32(seed_a, seed_b, seed_c, seed_d);
 
 function sfc32(a, b, c, d) {

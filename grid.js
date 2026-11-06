@@ -37,6 +37,14 @@ const RETICLE_WATER_SYMBOLS = [
     "#symbol_reticle_island_water"    // 15: all 4
 ];
 
+// Phase 4 (Roadmap 10): 4-Phase GPU Harmonic Swell Channels
+const PURE_WAVE_SYMBOLS = [
+    "#symbol_pure_wave_0",
+    "#symbol_pure_wave_1",
+    "#symbol_pure_wave_2",
+    "#symbol_pure_wave_3"
+];
+
 const RETICLE_ANGLES = [
     0, 0, 90, 0,
     180, 0, 90, 90,
@@ -462,14 +470,24 @@ class frame_meta {
             { d: "M 6.5 3.8 Q 10 2.5 13.5 3.8 Q 16.2 3.8 16.2 6.5 Q 17.5 10 16.2 13.5 Q 16.2 16.2 13.5 16.2 Q 10 17.5 6.5 16.2 Q 3.8 16.2 3.8 13.5 Q 2.5 10 3.8 6.5 Q 3.8 3.8 6.5 3.8 Z", cls: "reticle_wave_island" }
         );
 
-        // Open Water "Pure" Tile Wave Swell Symbol
-        var pureWaveSym = create_svg_element("g");
-        pureWaveSym.setAttribute("id", "symbol_pure_wave");
-        var pureWavePath = create_svg_element("path");
-        pureWavePath.setAttribute("class", "pure_wave");
-        pureWavePath.setAttribute("d", "M 3 10 Q 7 7.5 11 10 Q 15 12.5 19 10");
-        pureWaveSym.appendChild(pureWavePath);
-        defs.appendChild(pureWaveSym);
+        // Phase 4: 4-Phase Harmonic Open Water Wave Swell Symbols
+        for (var p = 0; p < 4; p++) {
+            var pureWaveSym = create_svg_element("g");
+            pureWaveSym.setAttribute("id", "symbol_pure_wave_" + p);
+            var pureWavePath = create_svg_element("path");
+            pureWavePath.setAttribute("class", "pure_wave pure_wave_phase_" + p);
+            pureWavePath.setAttribute("d", "M 3 10 Q 7 7.5 11 10 Q 15 12.5 19 10");
+            pureWaveSym.appendChild(pureWavePath);
+            defs.appendChild(pureWaveSym);
+        }
+
+        var pureWaveSymDef = create_svg_element("g");
+        pureWaveSymDef.setAttribute("id", "symbol_pure_wave");
+        var pureWavePathDef = create_svg_element("path");
+        pureWavePathDef.setAttribute("class", "pure_wave");
+        pureWavePathDef.setAttribute("d", "M 3 10 Q 7 7.5 11 10 Q 15 12.5 19 10");
+        pureWaveSymDef.appendChild(pureWavePathDef);
+        defs.appendChild(pureWaveSymDef);
 
         // Phase 4: Step Kinematic Micro-Interaction Symbols
         // 1. Wading ripple in shallow water
@@ -979,61 +997,176 @@ class frame_meta {
         }
     }
 
-    updateGrid(i_agent, interactive) {
-        this.interactive = (typeof interactive !== 'undefined') ? interactive : true;
-
-        my_cache_offset = (i_agent.x * this.cell_size_y) + i_agent.y;
-
-        if (!this.changed_slots) {
-            this.changed_slots = new Int32Array(this.rect_elements.length);
-        }
-        var changedCount = 0;
-
-        var pad = this.pad;
-        var frame_count = 0;
-        var mapCells = globalMapObject.map_cells;
-        for (var c = 0; c < this.all_cells.length; c++) {
-            var oldCell = this.all_cells[c];
-            if (oldCell) {
-                oldCell.cell_element = null;
+        setInteractive(interactive) {
+            this.interactive = Boolean(interactive);
+            if (this.player_avatar) {
+                var avatarClass = "player_avatar";
+                if (!this.interactive) {
+                    avatarClass += " walking";
+                } else {
+                    avatarClass += " idle";
+                }
+                if (typeof agent !== 'undefined' && agent && agent.agentCellOccupied && agent.agentCellOccupied.findDecoration && agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
+                    avatarClass += " thinking";
+                }
+                if (this.player_avatar._lastCls !== avatarClass) {
+                    this.player_avatar.setAttribute("class", avatarClass);
+                    this.player_avatar._lastCls = avatarClass;
+                }
             }
         }
-        for (var i = -pad; i <= this.cell_size_x + pad; i++) {
-            var map_x = i - vector_horizontal;
-            var colCells = mapCells[map_x];
-            var prevCol = mapCells[map_x - 1];
-            var nextCol = mapCells[map_x + 1];
-            var sx = i * this.cell_size;
-            for (var j = -pad; j <= this.cell_size_y + pad; j++) {
-                var map_y = j - vector_vertical;
-                var cell_object;
 
-                if (colCells !== undefined && colCells[map_y] !== undefined) {
+        updateGrid(i_agent, interactive, dx, dy) {
+            if (dx !== undefined && dy !== undefined && (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) && (dx !== 0 || dy !== 0)) {
+                return this.updateGridFrontier(i_agent, interactive, dx, dy);
+            }
+            return this.updateGridFull(i_agent, interactive);
+        }
+
+        updateGridFrontier(i_agent, interactive, dx, dy) {
+            this.interactive = (typeof interactive !== 'undefined') ? interactive : true;
+            my_cache_offset = (i_agent.x * this.cell_size_y) + i_agent.y;
+
+            const pad = this.pad;
+            const cols = this.cell_size_x + 2 * pad + 1;
+            const rows = this.cell_size_y + 2 * pad + 1;
+            const mapCells = globalMapObject.map_cells;
+
+            const pools = [
+                this.bridge_elements,
+                this.structure_elements,
+                this.tree_elements,
+                this.flora_elements,
+                this.roof_elements,
+                this.reticle_elements
+            ];
+
+            // Step 1: Retire exiting boundary slots to their respective free pools
+            if (dx > 0) {
+                for (let r = 0; r < rows; r++) {
+                    const k = 0 * rows + r;
+                    for (let p = 0; p < pools.length; p++) this.hideSymbolInstance(pools[p], k);
+                }
+            } else if (dx < 0) {
+                for (let r = 0; r < rows; r++) {
+                    const k = (cols - 1) * rows + r;
+                    for (let p = 0; p < pools.length; p++) this.hideSymbolInstance(pools[p], k);
+                }
+            }
+            if (dy > 0) {
+                for (let c = 0; c < cols; c++) {
+                    const k = c * rows + 0;
+                    for (let p = 0; p < pools.length; p++) this.hideSymbolInstance(pools[p], k);
+                }
+            } else if (dy < 0) {
+                for (let c = 0; c < cols; c++) {
+                    const k = c * rows + (rows - 1);
+                    for (let p = 0; p < pools.length; p++) this.hideSymbolInstance(pools[p], k);
+                }
+            }
+
+            // Step 2: Shift internal slots in directional order to prevent overwriting
+            const cFrom = (dx > 0) ? 0 : cols - 1;
+            const cTo = (dx > 0) ? cols - 1 - dx : -dx;
+            const cStep = (dx > 0) ? 1 : -1;
+
+            const rFrom = (dy > 0) ? 0 : rows - 1;
+            const rTo = (dy > 0) ? rows - 1 - dy : -dy;
+            const rStep = (dy > 0) ? 1 : -1;
+
+            for (let c = cFrom; (cStep > 0 ? c <= cTo : c >= cTo); c += cStep) {
+                const srcC = c + dx;
+                const destOffset = c * rows;
+                const srcOffset = srcC * rows;
+                const destPx = this.slot_x[destOffset];
+
+                for (let r = rFrom; (rStep > 0 ? r <= rTo : r >= rTo); r += rStep) {
+                    const srcR = r + dy;
+                    const kDest = destOffset + r;
+                    const kSrc = srcOffset + srcR;
+
+                    this.all_cells[kDest] = this.all_cells[kSrc];
+                    this.all_blocked_cells[kDest] = this.all_blocked_cells[kSrc];
+                    this.slot_state[kDest] = this.slot_state[kSrc];
+                    this.slot_reticle_state[kDest] = this.slot_reticle_state[kSrc];
+
+                    const cellObj = this.all_cells[kDest];
+                    const cellEl = this.rect_elements[kDest];
+                    if (cellObj) cellObj.cell_element = cellEl;
+
+                    const srcEl = this.rect_elements[kSrc];
+                    if (cellEl && srcEl && cellEl._lastClass !== srcEl._lastClass) {
+                        cellEl.setAttribute("class", srcEl._lastClass);
+                        cellEl._lastClass = srcEl._lastClass;
+                    }
+
+                    // Shift dynamic symbol instances
+                    for (let p = 0; p < pools.length; p++) {
+                        const pool = pools[p];
+                        const el = pool[kSrc];
+                        pool[kSrc] = null;
+                        pool[kDest] = el;
+                        if (el) {
+                            if (pool === this.reticle_elements) {
+                                const rk = this.slot_reticle_state[kDest];
+                                if ((rk & 0x8000) !== 0) {
+                                    if (el.getAttribute("x") !== destPx) el.setAttribute("x", destPx);
+                                    if (el.getAttribute("y") !== this.slot_y[kDest]) el.setAttribute("y", this.slot_y[kDest]);
+                                } else {
+                                    const mask = rk & 0xF;
+                                    const ang = RETICLE_ANGLES[mask];
+                                    const i = c - pad;
+                                    const j = r - pad;
+                                    const sx = i * this.cell_size;
+                                    const sy = j * this.cell_size;
+                                    const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
+                                    if (el._lastTf !== tf) {
+                                        el.setAttribute("transform", tf);
+                                        el._lastTf = tf;
+                                    }
+                                }
+                            } else {
+                                if (el.getAttribute("x") !== destPx) el.setAttribute("x", destPx);
+                                if (el.getAttribute("y") !== this.slot_y[kDest]) el.setAttribute("y", this.slot_y[kDest]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Step 3: Populate entering frontier slots
+            const populateSlot = (c, r) => {
+                const k = c * rows + r;
+                const i = c - pad;
+                const j = r - pad;
+                const map_x = i - vector_horizontal;
+                const map_y = j - vector_vertical;
+                const colCells = mapCells[map_x];
+                const prevCol = mapCells[map_x - 1];
+                const nextCol = mapCells[map_x + 1];
+
+                let cell_object;
+                if (colCells && colCells[map_y]) {
                     cell_object = colCells[map_y];
                 } else {
-                    cell_object = new cell_meta(null, i, j, frame_count, CellFlags.BLOCKED);
+                    cell_object = new cell_meta(null, i, j, k, CellFlags.BLOCKED);
                     cell_object.my_seed = 100;
                 }
 
-                var cell_element = this.rect_elements[frame_count];
+                const cell_element = this.rect_elements[k];
                 cell_object.cell_element = cell_element;
-                cell_object.my_seed_ref = frame_count + my_cache_offset;
+                cell_object.my_seed_ref = k + my_cache_offset;
                 cell_object.my_shortest_path = Number.MAX_SAFE_INTEGER;
+                this.all_cells[k] = cell_object;
+                this.all_blocked_cells[k] = cell_object.isBlockedType();
 
-                this.all_cells[frame_count] = cell_object;
-                this.all_blocked_cells[frame_count] = cell_object.isBlockedType();
-
+                cell_object.decorateCell();
                 const flags = cell_object.flags;
                 const elev = cell_object.elevation !== undefined ? cell_object.elevation : 1;
                 const hasDynamic = (flags & (CellFlags.TERRAIN_FLORA | CellFlags.STRUCTURE_ROOF)) !== 0;
-                const stateKey = hasDynamic ? -1 : (flags | (elev << 24));
+                this.slot_state[k] = hasDynamic ? -1 : (flags | (elev << 24));
 
-                if (this.slot_state[frame_count] !== stateKey || stateKey === -1 || cell_element._lastClass === null) {
-                    this.slot_state[frame_count] = stateKey;
-                    this.changed_slots[changedCount++] = frame_count;
-                }
-
-                // Directional Prefab Reticle Evaluation (Architecture 1)
+                // Directional Prefab Reticle Evaluation
                 const cat = this.getReticleCategory(cell_object);
                 let reticleKey = 0;
                 if (cat > 0) {
@@ -1041,194 +1174,404 @@ class frame_meta {
                     const catE = nextCol ? this.getReticleCategory(nextCol[map_y]) : 0;
                     const catS = colCells ? this.getReticleCategory(colCells[map_y + 1]) : 0;
                     const catW = prevCol ? this.getReticleCategory(prevCol[map_y]) : 0;
-
                     const mask = (catN !== cat ? 1 : 0) | (catE !== cat ? 2 : 0) | (catS !== cat ? 4 : 0) | (catW !== cat ? 8 : 0);
                     if (mask > 0) {
                         reticleKey = (cat << 4) | mask;
                     } else if (cat === 2 || cat === 3) {
-                        // Open Water "Pure" Tile Swells (sparse ~25% hash)
-                        if (((map_x * 37 + map_y * 17) & 3) === 0) {
-                            const delayIdx = (map_x * 19 + map_y * 31) % 70;
-                            reticleKey = (cat << 16) | 0x8000 | delayIdx;
+                        const di = i - this.grid_mid_x;
+                        const dj = j - this.grid_mid_y;
+                        if ((di * di + dj * dj) <= 256) {
+                            if (((map_x * 37 + map_y * 17) & 7) === 0) {
+                                const phase = (((map_x * 19) ^ (map_y >> 1)) & 3);
+                                reticleKey = (cat << 16) | 0x8000 | phase;
+                            }
                         }
                     }
                 }
 
-                if (this.slot_reticle_state[frame_count] !== reticleKey) {
-                    this.slot_reticle_state[frame_count] = reticleKey;
-                    if (reticleKey === 0) {
-                        this.hideSymbolInstance(this.reticle_elements, frame_count);
-                    } else if ((reticleKey & 0x8000) !== 0) {
-                        const cellCat = (reticleKey >> 16) & 0xFF;
-                        const cls = (cellCat === 3) ? "cell_pure_wave pure_wave_shallow" : "cell_pure_wave pure_wave_deep";
-                        const delay = -((reticleKey & 0x7F) / 10) + "s";
-                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, "#symbol_pure_wave", frame_count, cls, null, delay);
+                this.slot_reticle_state[k] = reticleKey;
+                if (reticleKey === 0) {
+                    this.hideSymbolInstance(this.reticle_elements, k);
+                } else if ((reticleKey & 0x8000) !== 0) {
+                    const cellCat = (reticleKey >> 16) & 0xFF;
+                    const phase = reticleKey & 0x3;
+                    const sym = PURE_WAVE_SYMBOLS[phase];
+                    const cls = (cellCat === 3) ? "cell_pure_wave pure_wave_shallow" : "cell_pure_wave pure_wave_deep";
+                    this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, k, cls, null, null);
+                } else {
+                    const mask = reticleKey & 0xF;
+                    const cellCat = (reticleKey >> 4) & 0xF;
+                    const isWater = (cellCat === 2 || cellCat === 3);
+                    const sym = isWater ? RETICLE_WATER_SYMBOLS[mask] : RETICLE_SYMBOLS[mask];
+                    const ang = RETICLE_ANGLES[mask];
+                    const cls = RETICLE_CLASSES[cellCat];
+                    const sx = i * this.cell_size;
+                    const sy = j * this.cell_size;
+                    const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
+                    this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, k, cls, tf, null);
+                }
+
+                // Dynamic structure / feature symbols
+                const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+                const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
+                const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+
+                if (hasStructureDeck) {
+                    this.ensureSymbolInstance(this.bridge_elements, this.bridges_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+                } else {
+                    this.hideSymbolInstance(this.bridge_elements, k);
+                }
+
+                if (hasStructureWall) {
+                    this.ensureSymbolInstance(this.structure_elements, this.structures_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+                } else {
+                    this.hideSymbolInstance(this.structure_elements, k);
+                }
+
+                if ((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding) {
+                    this.ensureSymbolInstance(this.tree_elements, this.features_layer, "#symbol_tree", k, "cell_tree_feature");
+                } else {
+                    this.hideSymbolInstance(this.tree_elements, k);
+                }
+
+                if ((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding) {
+                    const floraEl = this.ensureSymbolInstance(this.flora_elements, this.features_layer, "#symbol_flora", k, "cell_flora_feature");
+                    const jitterX = ((((Math.sin(map_x * 12.9898 + map_y * 78.233) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                    const jitterY = ((((Math.cos(map_x * 39.346 + map_y * 11.135) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                    const tf = `translate(${jitterX.toFixed(1)}, ${jitterY.toFixed(1)})`;
+                    if (floraEl._lastTf !== tf) {
+                        floraEl.setAttribute("transform", tf);
+                        floraEl._lastTf = tf;
+                    }
+                } else {
+                    this.hideSymbolInstance(this.flora_elements, k);
+                }
+
+                if ((flags & CellFlags.STRUCTURE_ROOF) !== 0) {
+                    const occupiedStructure = (typeof StructureRegistry !== 'undefined') ? StructureRegistry.getOccupiedInterior(i_agent) : null;
+                    const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
+                    let roofCls;
+                    if (isCutaway) {
+                        roofCls = 'cell_roof cutaway';
                     } else {
-                        const mask = reticleKey & 0xF;
-                        const cellCat = (reticleKey >> 4) & 0xF;
-                        const isWater = (cellCat === 2 || cellCat === 3);
-                        const sym = isWater ? RETICLE_WATER_SYMBOLS[mask] : RETICLE_SYMBOLS[mask];
-                        const ang = RETICLE_ANGLES[mask];
-                        const cls = RETICLE_CLASSES[cellCat];
-                        const sy = j * this.cell_size;
-                        const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
-                        this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, tf, null);
+                        const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
+                        roofCls = isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded';
+                    }
+                    this.ensureSymbolInstance(this.roof_elements, this.roof_layer, "#symbol_tile", k, roofCls);
+                } else {
+                    this.hideSymbolInstance(this.roof_elements, k);
+                }
+            };
+
+            if (dx > 0) {
+                for (let r = 0; r < rows; r++) populateSlot(cols - 1, r);
+            } else if (dx < 0) {
+                for (let r = 0; r < rows; r++) populateSlot(0, r);
+            }
+
+            if (dy > 0) {
+                for (let c = 0; c < cols; c++) populateSlot(c, rows - 1);
+            } else if (dy < 0) {
+                for (let c = 0; c < cols; c++) populateSlot(c, 0);
+            }
+
+            // Step 4: Synchronize static terrain viewport and flush recycled element pools
+            if (this.terrainPathService) {
+                this.terrainPathService.updateViewport(this, vector_horizontal, vector_vertical);
+            }
+
+            this.flushFreePools();
+
+            const toggleLayerVis = (layer, pool) => {
+                if (!layer) return;
+                const activeCount = layer.childElementCount - this.getFreePool(pool).length;
+                const vis = activeCount > 0 ? "block" : "none";
+                if (layer._lastVis !== vis) {
+                    layer.style.display = vis;
+                    layer._lastVis = vis;
+                }
+            };
+            toggleLayerVis(this.bridges_layer, this.bridge_elements);
+            toggleLayerVis(this.structures_layer, this.structure_elements);
+            toggleLayerVis(this.roof_layer, this.roof_elements);
+            toggleLayerVis(this.reticles_layer, this.reticle_elements);
+
+            if (this.player_avatar) {
+                var avatarClass = "player_avatar";
+                if (!this.interactive) {
+                    avatarClass += " walking";
+                } else {
+                    avatarClass += " idle";
+                }
+                if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
+                    avatarClass += " thinking";
+                }
+                if (this.player_avatar._lastCls !== avatarClass) {
+                    this.player_avatar.setAttribute("class", avatarClass);
+                    this.player_avatar._lastCls = avatarClass;
+                }
+            }
+
+            if (this.all_cells && this.all_cells[this.grid_mid_cell]) {
+                i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];
+            }
+        }
+
+        updateGridFull(i_agent, interactive) {
+            this.interactive = (typeof interactive !== 'undefined') ? interactive : true;
+
+            my_cache_offset = (i_agent.x * this.cell_size_y) + i_agent.y;
+
+            if (!this.changed_slots) {
+                this.changed_slots = new Int32Array(this.rect_elements.length);
+            }
+            var changedCount = 0;
+
+            var pad = this.pad;
+            var frame_count = 0;
+            var mapCells = globalMapObject.map_cells;
+            for (var c = 0; c < this.all_cells.length; c++) {
+                var oldCell = this.all_cells[c];
+                if (oldCell) {
+                    oldCell.cell_element = null;
+                }
+            }
+            for (var i = -pad; i <= this.cell_size_x + pad; i++) {
+                var map_x = i - vector_horizontal;
+                var colCells = mapCells[map_x];
+                var prevCol = mapCells[map_x - 1];
+                var nextCol = mapCells[map_x + 1];
+                var sx = i * this.cell_size;
+                for (var j = -pad; j <= this.cell_size_y + pad; j++) {
+                    var map_y = j - vector_vertical;
+                    var cell_object;
+
+                    if (colCells !== undefined && colCells[map_y] !== undefined) {
+                        cell_object = colCells[map_y];
+                    } else {
+                        cell_object = new cell_meta(null, i, j, frame_count, CellFlags.BLOCKED);
+                        cell_object.my_seed = 100;
+                    }
+
+                    var cell_element = this.rect_elements[frame_count];
+                    cell_object.cell_element = cell_element;
+                    cell_object.my_seed_ref = frame_count + my_cache_offset;
+                    cell_object.my_shortest_path = Number.MAX_SAFE_INTEGER;
+
+                    this.all_cells[frame_count] = cell_object;
+                    this.all_blocked_cells[frame_count] = cell_object.isBlockedType();
+
+                    const flags = cell_object.flags;
+                    const elev = cell_object.elevation !== undefined ? cell_object.elevation : 1;
+                    const hasDynamic = (flags & (CellFlags.TERRAIN_FLORA | CellFlags.STRUCTURE_ROOF)) !== 0;
+                    const stateKey = hasDynamic ? -1 : (flags | (elev << 24));
+
+                    if (this.slot_state[frame_count] !== stateKey || stateKey === -1 || cell_element._lastClass === null) {
+                        this.slot_state[frame_count] = stateKey;
+                        this.changed_slots[changedCount++] = frame_count;
+                    }
+
+                    // Directional Prefab Reticle Evaluation (Architecture 1)
+                    const cat = this.getReticleCategory(cell_object);
+                    let reticleKey = 0;
+                    if (cat > 0) {
+                        const catN = colCells ? this.getReticleCategory(colCells[map_y - 1]) : 0;
+                        const catE = nextCol ? this.getReticleCategory(nextCol[map_y]) : 0;
+                        const catS = colCells ? this.getReticleCategory(colCells[map_y + 1]) : 0;
+                        const catW = prevCol ? this.getReticleCategory(prevCol[map_y]) : 0;
+
+                        const mask = (catN !== cat ? 1 : 0) | (catE !== cat ? 2 : 0) | (catS !== cat ? 4 : 0) | (catW !== cat ? 8 : 0);
+                        if (mask > 0) {
+                            reticleKey = (cat << 4) | mask;
+                        } else if (cat === 2 || cat === 3) {
+                            // Open Water "Pure" Tile Swells (Phase 4: Distance Culling & 4-Phase GPU Harmonic Channels)
+                            const di = i - this.grid_mid_x;
+                            const dj = j - this.grid_mid_y;
+                            if ((di * di + dj * dj) <= 256) { // r <= 16 tiles
+                                if (((map_x * 37 + map_y * 17) & 7) === 0) { // sparse 1-in-8 cluster
+                                    const phase = (((map_x * 19) ^ (map_y >> 1)) & 3);
+                                    reticleKey = (cat << 16) | 0x8000 | phase;
+                                }
+                            }
+                        }
+                    }
+
+                    if (this.slot_reticle_state[frame_count] !== reticleKey) {
+                        this.slot_reticle_state[frame_count] = reticleKey;
+                        if (reticleKey === 0) {
+                            this.hideSymbolInstance(this.reticle_elements, frame_count);
+                        } else if ((reticleKey & 0x8000) !== 0) {
+                            const cellCat = (reticleKey >> 16) & 0xFF;
+                            const phase = reticleKey & 0x3;
+                            const sym = PURE_WAVE_SYMBOLS[phase];
+                            const cls = (cellCat === 3) ? "cell_pure_wave pure_wave_shallow" : "cell_pure_wave pure_wave_deep";
+                            this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, null, null);
+                        } else {
+                            const mask = reticleKey & 0xF;
+                            const cellCat = (reticleKey >> 4) & 0xF;
+                            const isWater = (cellCat === 2 || cellCat === 3);
+                            const sym = isWater ? RETICLE_WATER_SYMBOLS[mask] : RETICLE_SYMBOLS[mask];
+                            const ang = RETICLE_ANGLES[mask];
+                            const cls = RETICLE_CLASSES[cellCat];
+                            const sy = j * this.cell_size;
+                            const tf = `translate(${sx}, ${sy}) rotate(${ang}, 10, 10)`;
+                            this.ensureSymbolInstance(this.reticle_elements, this.reticles_layer, sym, frame_count, cls, tf, null);
+                        }
+                    }
+
+                    frame_count++;
+                }
+            }
+
+            if (this.terrainPathService) {
+                this.terrainPathService.updateViewport(this, vector_horizontal, vector_vertical);
+            }
+
+            // Phase 4: Dynamic Interior Cutaway & Ambient Lighting
+            const occupiedStructure = (typeof StructureRegistry !== 'undefined')
+                ? StructureRegistry.getOccupiedInterior(i_agent)
+                : null;
+
+            // Pass 1: Release symbol instances only from changed slots
+            for (var c = 0; c < changedCount; c++) {
+                var k = this.changed_slots[c];
+                var cell_object = this.all_cells[k];
+                const flags = cell_object.flags;
+
+                const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+                const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
+                const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+                if (!hasStructureDeck) {
+                    this.hideSymbolInstance(this.bridge_elements, k);
+                }
+                if (!hasStructureWall) {
+                    this.hideSymbolInstance(this.structure_elements, k);
+                }
+                if (!((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding)) {
+                    this.hideSymbolInstance(this.tree_elements, k);
+                }
+                if (!((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding)) {
+                    this.hideSymbolInstance(this.flora_elements, k);
+                }
+                if ((flags & CellFlags.STRUCTURE_ROOF) === 0) {
+                    this.hideSymbolInstance(this.roof_elements, k);
+                }
+            }
+
+            // Pass 2: Acquire recycled or new symbol instances only for changed slots
+            for (var c = 0; c < changedCount; c++) {
+                var k = this.changed_slots[c];
+                var cell_object = this.all_cells[k];
+                const flags = cell_object.flags;
+
+                cell_object.decorateCell();
+                var cell_element = this.rect_elements[k];
+
+                const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
+                const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
+                const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
+
+                if (hasStructureDeck) {
+                    this.ensureSymbolInstance(this.bridge_elements, this.bridges_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+                }
+                if (hasStructureWall) {
+                    this.ensureSymbolInstance(this.structure_elements, this.structures_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
+                }
+                if ((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding) {
+                    this.ensureSymbolInstance(this.tree_elements, this.features_layer, "#symbol_tree", k, "cell_tree_feature");
+                }
+                if ((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding) {
+                    var floraEl = this.ensureSymbolInstance(this.flora_elements, this.features_layer, "#symbol_flora", k, "cell_flora_feature");
+                    const map_x = cell_object.my_x !== undefined ? cell_object.my_x : 0;
+                    const map_y = cell_object.my_y !== undefined ? cell_object.my_y : 0;
+                    const jitterX = ((((Math.sin(map_x * 12.9898 + map_y * 78.233) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                    const jitterY = ((((Math.cos(map_x * 39.346 + map_y * 11.135) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
+                    const tf = `translate(${jitterX.toFixed(1)}, ${jitterY.toFixed(1)})`;
+                    if (floraEl._lastTf !== tf) {
+                        floraEl.setAttribute("transform", tf);
+                        floraEl._lastTf = tf;
                     }
                 }
-
-                frame_count++;
-            }
-        }
-
-        if (this.terrainPathService) {
-            this.terrainPathService.updateViewport(this, vector_horizontal, vector_vertical);
-        }
-
-        // Phase 4: Dynamic Interior Cutaway & Ambient Lighting
-        const occupiedStructure = (typeof StructureRegistry !== 'undefined')
-            ? StructureRegistry.getOccupiedInterior(i_agent)
-            : null;
-
-        // Pass 1: Release symbol instances only from changed slots
-        for (var c = 0; c < changedCount; c++) {
-            var k = this.changed_slots[c];
-            var cell_object = this.all_cells[k];
-            const flags = cell_object.flags;
-
-            const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
-            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
-            const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
-            if (!hasStructureDeck) {
-                this.hideSymbolInstance(this.bridge_elements, k);
-            }
-            if (!hasStructureWall) {
-                this.hideSymbolInstance(this.structure_elements, k);
-            }
-            if (!((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding)) {
-                this.hideSymbolInstance(this.tree_elements, k);
-            }
-            if (!((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding)) {
-                this.hideSymbolInstance(this.flora_elements, k);
-            }
-            if ((flags & CellFlags.STRUCTURE_ROOF) === 0) {
-                this.hideSymbolInstance(this.roof_elements, k);
-            }
-        }
-
-        // Pass 2: Acquire recycled or new symbol instances only for changed slots
-        for (var c = 0; c < changedCount; c++) {
-            var k = this.changed_slots[c];
-            var cell_object = this.all_cells[k];
-            const flags = cell_object.flags;
-
-            cell_object.decorateCell();
-            var cell_element = this.rect_elements[k];
-
-            const hasStrictBuilding = (flags & (CellFlags.STRUCTURE_FLOOR | CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_PATH)) !== 0;
-            const hasStructureDeck = (flags & (CellFlags.STRUCTURE_BRIDGE | CellFlags.STRUCTURE_PATH | CellFlags.STRUCTURE_FLOOR)) !== 0;
-            const hasStructureWall = (flags & (CellFlags.STRUCTURE_WALL | CellFlags.STRUCTURE_DOOR | CellFlags.STRUCTURE_DOOR_CLOSED | CellFlags.STRUCTURE_DOOR_OPEN | CellFlags.STRUCTURE_BARRICADE | CellFlags.STRUCTURE_FIXTURE)) !== 0;
-
-            if (hasStructureDeck) {
-                this.ensureSymbolInstance(this.bridge_elements, this.bridges_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
-            }
-            if (hasStructureWall) {
-                this.ensureSymbolInstance(this.structure_elements, this.structures_layer, "#symbol_tile", k, cell_element._lastClass || cell_element.getAttribute('class'));
-            }
-            if ((flags & CellFlags.TREE) !== 0 && (flags & CellFlags.TERRAIN_FLORA) === 0 && !hasStrictBuilding) {
-                this.ensureSymbolInstance(this.tree_elements, this.features_layer, "#symbol_tree", k, "cell_tree_feature");
-            }
-            if ((flags & CellFlags.TERRAIN_FLORA) !== 0 && !hasStrictBuilding) {
-                var floraEl = this.ensureSymbolInstance(this.flora_elements, this.features_layer, "#symbol_flora", k, "cell_flora_feature");
-                const map_x = cell_object.my_x !== undefined ? cell_object.my_x : 0;
-                const map_y = cell_object.my_y !== undefined ? cell_object.my_y : 0;
-                const jitterX = ((((Math.sin(map_x * 12.9898 + map_y * 78.233) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
-                const jitterY = ((((Math.cos(map_x * 39.346 + map_y * 11.135) * 43758.5453) % 1 + 1) % 1) - 0.5) * 5;
-                const tf = `translate(${jitterX.toFixed(1)}, ${jitterY.toFixed(1)})`;
-                if (floraEl._lastTf !== tf) {
-                    floraEl.setAttribute("transform", tf);
-                    floraEl._lastTf = tf;
+                if ((flags & CellFlags.STRUCTURE_ROOF) !== 0) {
+                    const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
+                    var roofCls;
+                    if (isCutaway) {
+                        roofCls = 'cell_roof cutaway';
+                    } else {
+                        const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
+                        roofCls = isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded';
+                    }
+                    this.ensureSymbolInstance(this.roof_elements, this.roof_layer, "#symbol_tile", k, roofCls);
                 }
             }
-            if ((flags & CellFlags.STRUCTURE_ROOF) !== 0) {
-                const isCutaway = occupiedStructure && (cell_object.structureId === occupiedStructure.id);
-                var roofCls;
-                if (isCutaway) {
-                    roofCls = 'cell_roof cutaway';
+
+            this.flushFreePools();
+
+            // Empty-layer culling
+            const toggleLayerVis = (layer, pool) => {
+                if (!layer) return;
+                const activeCount = layer.childElementCount - this.getFreePool(pool).length;
+                const vis = activeCount > 0 ? "block" : "none";
+                if (layer._lastVis !== vis) {
+                    layer.style.display = vis;
+                    layer._lastVis = vis;
+                }
+            };
+            toggleLayerVis(this.bridges_layer, this.bridge_elements);
+            toggleLayerVis(this.structures_layer, this.structure_elements);
+            toggleLayerVis(this.roof_layer, this.roof_elements);
+            toggleLayerVis(this.reticles_layer, this.reticle_elements);
+
+            if (this.ambient_layer) {
+                const ambCls = occupiedStructure ? "ambient_interior active" : "ambient_interior inactive";
+                if (this.ambient_layer._lastCls !== ambCls) {
+                    this.ambient_layer.setAttribute("class", ambCls);
+                    this.ambient_layer._lastCls = ambCls;
+                }
+            }
+
+            // Update player avatar appearance and position
+            if (this.player_avatar) {
+                var avatarClass = "player_avatar";
+                if (!this.interactive) {
+                    avatarClass += " walking";
                 } else {
-                    const isStone = (cell_object.structureId && (cell_object.structureId.includes("watchtower") || cell_object.structureId.includes("catacombs") || cell_object.structureId.includes("dungeon") || cell_object.structureId.includes("shrine")));
-                    roofCls = isStone ? 'cell_roof stone occluded' : 'cell_roof timber occluded';
+                    avatarClass += " idle";
                 }
-                this.ensureSymbolInstance(this.roof_elements, this.roof_layer, "#symbol_tile", k, roofCls);
+                if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
+                    avatarClass += " thinking";
+                }
+                if (this.player_avatar._lastCls !== avatarClass) {
+                    this.player_avatar.setAttribute("class", avatarClass);
+                    this.player_avatar._lastCls = avatarClass;
+                }
+
+                var centerX = (this.grid_mid_x + 0.5) * this.cell_size;
+                var centerY = (this.grid_mid_y + 0.5) * this.cell_size;
+                var avatarTf = `translate(${centerX}, ${centerY})`;
+                if (this.player_avatar._lastTf !== avatarTf) {
+                    this.player_avatar.setAttribute("transform", avatarTf);
+                    this.player_avatar._lastTf = avatarTf;
+                }
+            }
+
+            if (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells && globalMapObject.map_cells[i_agent.x] && globalMapObject.map_cells[i_agent.x][i_agent.y]) {
+                i_agent.agentCellOccupied = globalMapObject.map_cells[i_agent.x][i_agent.y];
+            } else if (this.all_cells && this.all_cells[this.grid_mid_cell]) {
+                i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];
+            } else if (this.all_cells && this.all_cells.length > 0) {
+                i_agent.agentCellOccupied = this.all_cells[0];
             }
         }
 
-        this.flushFreePools();
-
-        // Empty-layer culling
-        const toggleLayerVis = (layer, pool) => {
-            if (!layer) return;
-            const activeCount = layer.childElementCount - this.getFreePool(pool).length;
-            const vis = activeCount > 0 ? "block" : "none";
-            if (layer._lastVis !== vis) {
-                layer.style.display = vis;
-                layer._lastVis = vis;
+        setSunAzimuth(deg) {
+            if (this.terrainPathService && typeof this.terrainPathService.setSunAzimuth === 'function') {
+                this.terrainPathService.setSunAzimuth(deg);
             }
-        };
-        toggleLayerVis(this.bridges_layer, this.bridge_elements);
-        toggleLayerVis(this.structures_layer, this.structure_elements);
-        toggleLayerVis(this.roof_layer, this.roof_elements);
-        toggleLayerVis(this.reticles_layer, this.reticle_elements);
-
-        if (this.ambient_layer) {
-            const ambCls = occupiedStructure ? "ambient_interior active" : "ambient_interior inactive";
-            if (this.ambient_layer._lastCls !== ambCls) {
-                this.ambient_layer.setAttribute("class", ambCls);
-                this.ambient_layer._lastCls = ambCls;
-            }
-        }
-
-        // Update player avatar appearance and position
-        if (this.player_avatar) {
-            var avatarClass = "player_avatar";
-            if (!this.interactive) {
-                avatarClass += " walking";
-            } else {
-                avatarClass += " idle";
-            }
-            if (i_agent.agentCellOccupied && i_agent.agentCellOccupied.findDecoration && i_agent.agentCellOccupied.findDecoration("ThinkingAgentDecoration")) {
-                avatarClass += " thinking";
-            }
-            if (this.player_avatar._lastCls !== avatarClass) {
-                this.player_avatar.setAttribute("class", avatarClass);
-                this.player_avatar._lastCls = avatarClass;
-            }
-
-            var centerX = (this.grid_mid_x + 0.5) * this.cell_size;
-            var centerY = (this.grid_mid_y + 0.5) * this.cell_size;
-            var avatarTf = `translate(${centerX}, ${centerY})`;
-            if (this.player_avatar._lastTf !== avatarTf) {
-                this.player_avatar.setAttribute("transform", avatarTf);
-                this.player_avatar._lastTf = avatarTf;
-            }
-        }
-
-        if (typeof globalMapObject !== 'undefined' && globalMapObject.map_cells && globalMapObject.map_cells[i_agent.x] && globalMapObject.map_cells[i_agent.x][i_agent.y]) {
-            i_agent.agentCellOccupied = globalMapObject.map_cells[i_agent.x][i_agent.y];
-        } else if (this.all_cells && this.all_cells[this.grid_mid_cell]) {
-            i_agent.agentCellOccupied = this.all_cells[this.grid_mid_cell];
-        } else if (this.all_cells && this.all_cells.length > 0) {
-            i_agent.agentCellOccupied = this.all_cells[0];
         }
     }
 
-    setSunAzimuth(deg) {
-        if (this.terrainPathService && typeof this.terrainPathService.setSunAzimuth === 'function') {
-            this.terrainPathService.setSunAzimuth(deg);
-        }
-    }
-}
-
-if (typeof window !== 'undefined') {
+    if(typeof window !== 'undefined') {
     window.frame_meta = frame_meta;
     window.setSunAzimuth = (deg) => {
         if (typeof globalGridObject !== 'undefined' && globalGridObject && typeof globalGridObject.setSunAzimuth === 'function') {
